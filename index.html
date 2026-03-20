@@ -1,6 +1,856 @@
 <!DOCTYPE html>
 <html lang="es">
+<head><!DOCTYPE html>
+<html lang="es">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎵 Bingo Musical</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap');
+:root{--bg:#0d0d14;--sur:#16161f;--sur2:#1e1e2e;--gold:#f5c842;--gold2:#e8a020;--pink:#e8407a;--teal:#2dd4bf;--purple:#9b5de5;--text:#f0eeff;--muted:#8888aa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+.screen{display:none;min-height:100vh;flex-direction:column;align-items:center;padding:40px 20px;position:relative;z-index:1}
+.screen.active{display:flex}
+
+/* HOME */
+#screen-home{background:radial-gradient(ellipse 80% 60% at 50% 0%,#2a1060,transparent 70%);justify-content:center}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,10vw,90px);letter-spacing:4px;line-height:1;text-align:center;background:linear-gradient(135deg,var(--gold),var(--pink) 60%,var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.logo-sub{font-size:13px;letter-spacing:6px;text-transform:uppercase;color:var(--muted);margin-bottom:44px;text-align:center}
+.era-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:16px;width:100%;max-width:960px}
+.era-card{background:var(--sur);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:28px 24px;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;overflow:hidden}
+.era-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .25s;pointer-events:none}
+.era-card:hover{transform:translateY(-4px)}.era-card:hover::before{opacity:1}
+.c70{border-color:rgba(251,146,60,.25)}.c70::before{background:linear-gradient(135deg,rgba(251,146,60,.09),transparent)}.c70:hover{box-shadow:0 20px 50px rgba(251,146,60,.2);border-color:rgba(251,146,60,.5)!important}
+.c2k{border-color:rgba(45,212,191,.25)}.c2k::before{background:linear-gradient(135deg,rgba(45,212,191,.09),transparent)}.c2k:hover{box-shadow:0 20px 50px rgba(45,212,191,.2);border-color:rgba(45,212,191,.5)!important}
+.cac{border-color:rgba(232,64,122,.25)}.cac::before{background:linear-gradient(135deg,rgba(232,64,122,.09),transparent)}.cac:hover{box-shadow:0 20px 50px rgba(232,64,122,.2);border-color:rgba(232,64,122,.5)!important}
+.ces{border-color:rgba(245,200,66,.25)}.ces::before{background:linear-gradient(135deg,rgba(245,200,66,.09),transparent)}.ces:hover{box-shadow:0 20px 50px rgba(245,200,66,.2);border-color:rgba(245,200,66,.5)!important}
+.cit{border-color:rgba(156,220,90,.25)}.cit::before{background:linear-gradient(135deg,rgba(156,220,90,.09),transparent)}.cit:hover{box-shadow:0 20px 50px rgba(156,220,90,.2);border-color:rgba(156,220,90,.5)!important}
+.cmx{border-color:rgba(155,93,229,.25)}.cmx::before{background:linear-gradient(135deg,rgba(155,93,229,.09),transparent)}.cmx:hover{box-shadow:0 20px 50px rgba(155,93,229,.2);border-color:rgba(155,93,229,.5)!important}
+.era-emoji{font-size:40px;margin-bottom:14px;display:block}
+.era-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;margin-bottom:6px}
+.c70 .era-title{color:#fb923c}.c2k .era-title{color:var(--teal)}.cac .era-title{color:var(--pink)}.ces .era-title{color:var(--gold)}.cit .era-title{color:#9cdc5a}.cmx .era-title{color:var(--purple)}
+.era-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.era-count{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.07);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)}
+
+/* SETUP */
+#screen-setup{background:radial-gradient(ellipse 80% 60% at 50% 0%,#2a1060,transparent 70%);justify-content:center}
+.setup-card{background:var(--sur);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:36px;width:100%;max-width:520px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.setup-card h2{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--gold);margin-bottom:4px}
+.era-badge{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:20px;display:block}
+.player-row{display:flex;gap:10px;margin-bottom:12px}
+.player-row input{flex:1;background:var(--sur2);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
+.player-row input:focus{border-color:var(--gold)}
+.player-row input::placeholder{color:var(--muted)}
+.btn-rm{background:rgba(232,64,122,.12);border:1px solid rgba(232,64,122,.3);border-radius:10px;color:var(--pink);width:44px;height:44px;cursor:pointer;font-size:18px}
+.btn-add-p{width:100%;height:44px;margin-bottom:4px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:10px;color:var(--gold);font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer}
+.btn-back{background:var(--sur2);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:var(--muted);padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-bottom:20px}
+.btn-primary{width:100%;margin-top:24px;padding:16px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:12px;color:#111;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;cursor:pointer;box-shadow:0 8px 30px rgba(245,200,66,.35)}
+
+/* CARDS SCREEN */
+#screen-cards{background:radial-gradient(ellipse 80% 50% at 50% 0%,#0e2a40,transparent 70%);gap:32px}
+.screen-title{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;color:var(--teal);text-align:center}
+.screen-sub{color:var(--muted);font-size:13px;text-align:center}
+.cards-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:32px;width:100%;max-width:1200px}
+/* QR card: square, name + QR only */
+.player-card{background:var(--sur);border:1px solid rgba(45,212,191,.2);border-radius:20px;padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:300px}
+.pc-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:4px;color:var(--teal);text-align:center}
+/* Force square QR box */
+.qr-box{background:#fff;border-radius:14px;padding:10px;display:inline-block;line-height:0}
+.qr-box canvas,.qr-box img{display:block!important;width:232px!important;height:232px!important}
+.qr-box>div{line-height:0!important;font-size:0!important}
+.qr-hint{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-align:center}
+.btn-start{padding:16px 48px;background:linear-gradient(135deg,var(--pink),var(--purple));border:none;border-radius:12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;cursor:pointer;box-shadow:0 8px 30px rgba(232,64,122,.4)}
+
+/* GAME */
+#screen-game{padding:20px;background:radial-gradient(ellipse 60% 40% at 50% 0%,#1a0a30,transparent 60%);align-items:stretch}
+.game-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1400px;padding-bottom:16px;flex-wrap:wrap;gap:10px}
+.game-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;background:linear-gradient(135deg,var(--gold),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hbtns{display:flex;gap:10px}
+/* "Nuevo Bingo" button */
+.btn-bingo{padding:12px 28px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;color:#111;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;cursor:pointer;animation:glow 2s infinite alternate}
+@keyframes glow{from{box-shadow:0 6px 20px rgba(245,200,66,.3)}to{box-shadow:0 6px 40px rgba(245,200,66,.7)}}
+.btn-rst{padding:12px 20px;background:var(--sur2);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer}
+.btn-rst:hover{color:var(--pink);border-color:var(--pink)}
+.stats-bar{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:12px 20px;background:var(--sur2);border-radius:12px;margin-bottom:16px;width:100%;max-width:1400px}
+.stat-item{text-align:center}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold)}
+.stat-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.game-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;width:100%;max-width:1400px;flex:1}
+@media(max-width:900px){.game-layout{grid-template-columns:1fr}}
+.game-left{display:flex;flex-direction:column;gap:16px}
+
+/* Now playing */
+.now-playing{background:var(--sur);border:1px solid rgba(245,200,66,.2);border-radius:18px;padding:24px 28px;position:relative;overflow:hidden}
+.now-playing::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,200,66,.05),transparent 60%);pointer-events:none}
+.np-lbl{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.np-num{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--muted);letter-spacing:2px;margin-bottom:4px}
+.np-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,4vw,44px);letter-spacing:2px;line-height:1;color:var(--gold);margin-bottom:6px}
+.np-artist{font-size:16px;color:var(--text);font-weight:500;margin-bottom:2px}
+.np-year{font-size:13px;color:var(--muted);margin-bottom:16px}
+.controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.btn-ctrl{padding:12px 22px;border-radius:10px;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer;transition:opacity .15s}
+.btn-ctrl:hover{opacity:.85}
+.btn-next{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;box-shadow:0 6px 20px rgba(232,64,122,.35)}
+.btn-pause{background:var(--sur2);border:1px solid rgba(255,255,255,.12);color:var(--text)}
+.paused-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(232,64,122,.15);border:1px solid rgba(232,64,122,.4);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--pink);letter-spacing:2px;text-transform:uppercase}
+.paused-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--pink);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Audio */
+.audio-box{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-top:4px}
+.a-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.a-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.a-dot.playing{background:#4ade80;box-shadow:0 0 8px #4ade80;animation:blink 1.2s infinite}
+.a-dot.loading{background:var(--gold);animation:blink .6s infinite}
+.a-dot.error{background:var(--pink)}
+.a-txt{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog-bar{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;cursor:pointer}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--purple));border-radius:3px;width:0%;transition:width .25s linear}
+.t-lbl{font-size:11px;color:var(--muted);min-width:32px;text-align:center}
+.vol-row{display:flex;align-items:center;gap:10px}
+.vol-icon{font-size:18px;cursor:pointer;color:var(--muted);user-select:none}
+.vol-icon:hover{color:var(--text)}
+input[type=range].vol{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.15);outline:none;cursor:pointer}
+input[type=range].vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--teal);cursor:pointer}
+
+/* Board */
+.board-wrap{background:var(--sur);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px;flex:1}
+.board-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.board-ttl{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--purple)}
+.btn-rst-board{padding:8px 16px;background:rgba(232,64,122,.12);border:1px solid rgba(232,64,122,.3);border-radius:8px;color:var(--pink);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer}
+.btn-rst-board:hover{background:rgba(232,64,122,.25)}
+.board-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+@media(max-width:700px){.board-grid{grid-template-columns:repeat(6,1fr)}}
+.bcell{background:var(--sur2);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:5px 4px;text-align:center;min-height:54px;display:flex;flex-direction:column;justify-content:center;transition:all .4s}
+.bcell.called{background:linear-gradient(135deg,#1e0a3c,#12082a);border-color:var(--purple);box-shadow:0 0 12px rgba(155,93,229,.25);animation:pop .3s ease}
+@keyframes pop{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.bn{font-family:'Bebas Neue',sans-serif;font-size:12px;color:var(--muted);margin-bottom:1px}
+.bcell.called .bn{color:var(--purple)}
+.bt{font-size:6.5px;font-weight:700;color:var(--text);line-height:1.2}
+.bcell.called .bt{color:#d8b4fe}
+.ba{font-size:6px;color:var(--muted);line-height:1.1;margin-top:1px}
+.bcell.called .ba{color:#a78bfa}
+
+/* RIGHT PANEL: Histórico */
+.game-right{background:var(--sur);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px;overflow-y:auto;max-height:calc(100vh - 40px);position:sticky;top:20px}
+.panel-ttl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--teal);margin-bottom:4px}
+.panel-hint{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:14px}
+.hist-empty{font-size:12px;color:var(--muted);text-align:center;padding:20px 0;letter-spacing:1px}
+.hist-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--sur2);border-radius:10px;margin-bottom:6px;border-left:3px solid var(--purple);animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.hist-num{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--purple);min-width:28px}
+.hist-info{flex:1;min-width:0}
+.hist-title{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-artist{font-size:10px;color:var(--muted)}
+.hist-year{font-size:10px;color:var(--gold);flex-shrink:0}
+
+/* WINNER */
+#screen-winner{justify-content:center;align-items:center;background:radial-gradient(ellipse 80% 60% at 50% 50%,#1a0a30,transparent 70%)}
+.w-emoji{font-size:80px;margin-bottom:16px;text-align:center;animation:bounce 1s infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-16px)}}
+.w-lbl{font-size:14px;letter-spacing:6px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;text-align:center}
+.w-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(50px,12vw,100px);letter-spacing:4px;background:linear-gradient(135deg,var(--gold),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:30px;text-align:center}
+
+/* MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center}
+.modal-ov.open{display:flex}
+.modal-box{background:var(--sur);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:32px;max-width:380px;width:90%;text-align:center}
+.modal-box h3{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--pink);margin-bottom:10px}
+.modal-box p{color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.5}
+.modal-btns{display:flex;gap:12px;justify-content:center}
+.mbtn{padding:12px 28px;border:none;border-radius:10px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer}
+.mbtn.ok{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff}
+.mbtn.no{background:var(--sur2);border:1px solid rgba(255,255,255,.12);color:var(--muted)}
+
+/* TOAST */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--sur);border:1px solid var(--gold);border-radius:12px;padding:14px 24px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--gold);z-index:200;transition:transform .35s}
+.toast.show{transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+@keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+</style>
+<script>
+// Run immediately — if QR link, replace page before DOM renders
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  var name=params.get('p');
+  var era=params.get('e');
+  var sIds=params.get('s');
+  if(!name||!era||!sIds)return;
+  // Will be handled by QR reader script at bottom after CATALOGS load
+  // Hide home screen to avoid flash
+  document.documentElement.style.background='#0d0d14';
+})();
+</script>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="logo">Bingo<br>Musical</div>
+  <div class="logo-sub">Elige tu época favorita</div>
+  <div class="era-grid">
+    <div class="era-card c70" onclick="selectEra('70s')"><span class="era-count">95</span><span class="era-emoji">🕺</span><div class="era-title">70s · 80s · 90s</div><div class="era-desc">Rock clásico, pop, disco y grunge. Queen, Michael Jackson, Nirvana, Madonna y más.</div></div>
+    <div class="era-card c2k" onclick="selectEra('2000s')"><span class="era-count">95</span><span class="era-emoji">💿</span><div class="era-title">Años 2000</div><div class="era-desc">Los grandes hits del nuevo milenio. Britney, Eminem, Beyoncé, Lady Gaga y más.</div></div>
+    <div class="era-card cac" onclick="selectEra('actual')"><span class="era-count">95</span><span class="era-emoji">🔥</span><div class="era-title">Actuales</div><div class="era-desc">Taylor Swift, Bad Bunny, Rosalía, The Weeknd, Billie Eilish y más.</div></div>
+    <div class="era-card ces" onclick="selectEra('española')"><span class="era-count">95</span><span class="era-emoji">🇪🇸</span><div class="era-title">Canciones Españolas</div><div class="era-desc">Mecano, Alejandro Sanz, Rosalía, C. Tangana, Héroes del Silencio y más.</div></div>
+    <div class="era-card cit" onclick="selectEra('italiana')"><span class="era-count">95</span><span class="era-emoji">🇮🇹</span><div class="era-title">Canciones Italianas</div><div class="era-desc">Vasco Rossi, Lucio Battisti, Laura Pausini, Eros Ramazzotti y más.</div></div>
+    <div class="era-card cmx" onclick="selectEra('mixta')"><span class="era-count">95</span><span class="era-emoji">🎲</span><div class="era-title">Mixta</div><div class="era-desc">Una mezcla de todas las épocas y estilos. ¡La más sorprendente!</div></div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen">
+  <div class="setup-card">
+    <button class="btn-back" onclick="showScreen('screen-home')">← Volver</button>
+    <h2>👥 Jugadores</h2>
+    <span class="era-badge" id="era-badge"></span>
+    <div id="players-list"></div>
+    <button class="btn-add-p" onclick="addPlayer()">+ Añadir jugador</button>
+    <button class="btn-primary" onclick="generateCards()">🎵 Generar Cartillas</button>
+  </div>
+</div>
+
+<!-- CARDS: nombre + QR cuadrado -->
+<div id="screen-cards" class="screen">
+  <div class="screen-title">🎫 Cartillas del Juego</div>
+  <div class="screen-sub">Escanea el QR con tu móvil para abrir tu cartilla interactiva</div>
+  <div class="cards-grid" id="cards-grid"></div>
+  <button class="btn-start" onclick="startGame()">🎲 ¡Comenzar el Juego!</button>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <div class="game-logo">🎵 Bingo Musical</div>
+    <div class="hbtns">
+      <button class="btn-rst" onclick="confirmReset()">↺ Restablecer</button>
+      <button class="btn-bingo" onclick="nuevoBingo()">🏆 Nuevo Bingo</button>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-val" id="stat-called">0</div><div class="stat-lbl">Cantadas</div></div>
+    <div class="stat-item"><div class="stat-val" id="stat-rem">—</div><div class="stat-lbl">Restantes</div></div>
+    <div class="stat-item"><div class="stat-val" id="stat-pl">0</div><div class="stat-lbl">Jugadores</div></div>
+  </div>
+  <div class="game-layout">
+    <div class="game-left">
+      <div class="now-playing">
+        <div class="np-lbl">🎵 Ahora suena</div>
+        <div class="np-num" id="np-num">—</div>
+        <div class="np-title" id="np-title">Pulsa "Siguiente" para empezar</div>
+        <div class="np-artist" id="np-artist"></div>
+        <div class="np-year" id="np-year"></div>
+        <div class="controls">
+          <button class="btn-ctrl btn-next" onclick="nextSong()">▶ Siguiente canción</button>
+          <button class="btn-ctrl btn-pause" id="btn-pause" onclick="togglePause()">⏸ Pausar</button>
+        </div>
+        <div id="paused-ind" style="display:none;margin-bottom:10px"><span class="paused-badge"><span class="dot"></span>PAUSADO</span></div>
+        <div class="audio-box" id="audio-box" style="display:none">
+          <div class="a-row"><span class="a-dot" id="a-dot"></span><span class="a-txt" id="a-txt">Cargando…</span></div>
+          <div class="prog-row">
+            <span class="t-lbl" id="t-cur">0:00</span>
+            <div class="prog-bar" onclick="seekAudio(event)"><div class="prog-fill" id="prog-fill"></div></div>
+            <span class="t-lbl" id="t-tot">0:30</span>
+          </div>
+          <div class="vol-row">
+            <span class="vol-icon" id="vol-icon" onclick="toggleMute()">🔊</span>
+            <input type="range" class="vol" id="vol-sl" min="0" max="1" step="0.02" value="0.8" oninput="setVol(this.value)">
+          </div>
+        </div>
+      </div>
+      <div class="board-wrap">
+        <div class="board-top">
+          <div class="board-ttl" id="board-ttl">📋 Casillero</div>
+          <button class="btn-rst-board" onclick="confirmReset()">↺ Restablecer</button>
+        </div>
+        <div class="board-grid" id="board-grid"></div>
+      </div>
+    </div>
+    <!-- RIGHT: Histórico de canciones cantadas -->
+    <div class="game-right">
+      <div class="panel-ttl">🎵 Histórico</div>
+      <div class="panel-hint">Canciones cantadas en orden</div>
+      <div id="hist-list"><div class="hist-empty">Aún no se ha cantado ninguna canción</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- WINNER -->
+<div id="screen-winner" class="screen">
+  <div class="w-emoji">🏆</div>
+  <div class="w-lbl">¡Tenemos ganador!</div>
+  <div class="w-name" id="w-name"></div>
+  <button class="btn-primary" style="width:280px;font-size:18px" onclick="showScreen('screen-home')">🔄 Nueva Partida</button>
+</div>
+
+<!-- MODAL RESET -->
+<div class="modal-ov" id="modal-reset" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <h3>⚠️ Restablecer</h3>
+    <p>Se borrarán todas las canciones cantadas y el histórico. ¿Continuar?</p>
+    <div class="modal-btns">
+      <button class="mbtn no" onclick="closeModal()">Cancelar</button>
+      <button class="mbtn ok" onclick="doReset()">Restablecer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════
+//  CATÁLOGOS — 95 canciones cada uno
+// ═══════════════════════════════════
+const CATALOGS={
+'70s':[
+{t:"Bohemian Rhapsody",a:"Queen",y:1975},{t:"Hotel California",a:"Eagles",y:1977},{t:"Stairway to Heaven",a:"Led Zeppelin",y:1971},{t:"Heroes",a:"David Bowie",y:1977},{t:"Imagine",a:"John Lennon",y:1971},{t:"Born to Run",a:"Bruce Springsteen",y:1975},{t:"Satisfaction",a:"Rolling Stones",y:1965},{t:"Purple Haze",a:"Jimi Hendrix",y:1967},{t:"Johnny B. Goode",a:"Chuck Berry",y:1958},{t:"Respect",a:"Aretha Franklin",y:1967},
+{t:"What's Going On",a:"Marvin Gaye",y:1971},{t:"Anarchy in the UK",a:"Sex Pistols",y:1977},{t:"Kashmir",a:"Led Zeppelin",y:1975},{t:"Life on Mars",a:"David Bowie",y:1971},{t:"Whole Lotta Love",a:"Led Zeppelin",y:1969},{t:"Light My Fire",a:"The Doors",y:1967},{t:"Hey Jude",a:"The Beatles",y:1968},{t:"Let It Be",a:"The Beatles",y:1970},{t:"Come Together",a:"The Beatles",y:1969},{t:"Brown Sugar",a:"Rolling Stones",y:1971},
+{t:"Superstition",a:"Stevie Wonder",y:1972},{t:"Sir Duke",a:"Stevie Wonder",y:1977},{t:"Stayin Alive",a:"Bee Gees",y:1977},{t:"Night Fever",a:"Bee Gees",y:1977},{t:"Dancing Queen",a:"ABBA",y:1976},{t:"Waterloo",a:"ABBA",y:1974},{t:"Fernando",a:"ABBA",y:1976},{t:"Mamma Mia",a:"ABBA",y:1975},{t:"Ring of Fire",a:"Johnny Cash",y:1963},{t:"Jolene",a:"Dolly Parton",y:1973},
+{t:"My Way",a:"Frank Sinatra",y:1969},{t:"Africa",a:"Toto",y:1982},{t:"Take On Me",a:"a-ha",y:1985},{t:"Girls Just Want to Have Fun",a:"Cyndi Lauper",y:1983},{t:"Like a Virgin",a:"Madonna",y:1984},{t:"Every Breath You Take",a:"The Police",y:1983},{t:"Tainted Love",a:"Soft Cell",y:1981},{t:"Jump",a:"Van Halen",y:1984},{t:"99 Luftballons",a:"Nena",y:1983},{t:"True Colors",a:"Cyndi Lauper",y:1986},
+{t:"Don't Stop Believin",a:"Journey",y:1981},{t:"Sweet Child O Mine",a:"Guns N Roses",y:1988},{t:"Faith",a:"George Michael",y:1987},{t:"Careless Whisper",a:"George Michael",y:1984},{t:"Wake Me Up Before You Go Go",a:"Wham!",y:1984},{t:"I Want to Break Free",a:"Queen",y:1984},{t:"Radio Ga Ga",a:"Queen",y:1984},{t:"Total Eclipse of the Heart",a:"Bonnie Tyler",y:1983},{t:"Karma Chameleon",a:"Culture Club",y:1983},{t:"Billie Jean",a:"Michael Jackson",y:1983},
+{t:"Thriller",a:"Michael Jackson",y:1982},{t:"Beat It",a:"Michael Jackson",y:1982},{t:"Man in the Mirror",a:"Michael Jackson",y:1987},{t:"Nothing Compares 2 U",a:"Sinead O Connor",y:1990},{t:"Under the Bridge",a:"RHCP",y:1992},{t:"Jeremy",a:"Pearl Jam",y:1991},{t:"Losing My Religion",a:"REM",y:1991},{t:"Creep",a:"Radiohead",y:1992},{t:"Black Hole Sun",a:"Soundgarden",y:1994},{t:"Waterfalls",a:"TLC",y:1995},
+{t:"You Oughta Know",a:"Alanis Morissette",y:1995},{t:"Wonderwall",a:"Oasis",y:1995},{t:"Karma Police",a:"Radiohead",y:1997},{t:"Bittersweet Symphony",a:"The Verve",y:1997},{t:"Killing Me Softly",a:"Fugees",y:1996},{t:"No Scrubs",a:"TLC",y:1999},{t:"Smooth",a:"Santana",y:1999},{t:"Livin La Vida Loca",a:"Ricky Martin",y:1999},{t:"Baby One More Time",a:"Britney Spears",y:1998},{t:"My Heart Will Go On",a:"Celine Dion",y:1997},
+{t:"When Doves Cry",a:"Prince",y:1984},{t:"Purple Rain",a:"Prince",y:1984},{t:"With or Without You",a:"U2",y:1987},{t:"One",a:"U2",y:1991},{t:"Sweet Home Alabama",a:"Lynyrd Skynyrd",y:1974},{t:"Eye of the Tiger",a:"Survivor",y:1982},{t:"Don't Stop Me Now",a:"Queen",y:1978},{t:"We Are the Champions",a:"Queen",y:1977},{t:"Another One Bites the Dust",a:"Queen",y:1980},{t:"Sultans of Swing",a:"Dire Straits",y:1978},
+{t:"Smells Like Teen Spirit",a:"Nirvana",y:1991},{t:"Like a Rolling Stone",a:"Bob Dylan",y:1965},{t:"Don't You Forget About Me",a:"Simple Minds",y:1985},{t:"1999",a:"Prince",y:1982},{t:"More Than a Feeling",a:"Boston",y:1976},{t:"Relax",a:"Frankie Goes to Hollywood",y:1983},{t:"Physical",a:"Olivia Newton-John",y:1981},{t:"Roxanne",a:"The Police",y:1978},{t:"Blue Monday",a:"New Order",y:1983},{t:"This Charming Man",a:"The Smiths",y:1983},
+{t:"Love Will Tear Us Apart",a:"Joy Division",y:1980},{t:"Vienna",a:"Ultravox",y:1981},{t:"Should I Stay or Should I Go",a:"The Clash",y:1982},{t:"Welcome to the Jungle",a:"Guns N Roses",y:1987},{t:"November Rain",a:"Guns N Roses",y:1991}
+],
+'2000s':[
+{t:"Genie in a Bottle",a:"Christina Aguilera",y:1999},{t:"Beautiful Day",a:"U2",y:2000},{t:"In the End",a:"Linkin Park",y:2000},{t:"Fallin",a:"Alicia Keys",y:2001},{t:"How You Remind Me",a:"Nickelback",y:2001},{t:"Complicated",a:"Avril Lavigne",y:2002},{t:"Sk8er Boi",a:"Avril Lavigne",y:2002},{t:"Cry Me a River",a:"Justin Timberlake",y:2002},{t:"Lose Yourself",a:"Eminem",y:2002},{t:"In Da Club",a:"50 Cent",y:2003},
+{t:"Crazy in Love",a:"Beyonce",y:2003},{t:"Mr Brightside",a:"The Killers",y:2003},{t:"Yeah",a:"Usher",y:2004},{t:"Since U Been Gone",a:"Kelly Clarkson",y:2004},{t:"Numb",a:"Linkin Park",y:2003},{t:"Take Me Out",a:"Franz Ferdinand",y:2004},{t:"Gold Digger",a:"Kanye West",y:2005},{t:"Hollaback Girl",a:"Gwen Stefani",y:2005},{t:"Boulevard of Broken Dreams",a:"Green Day",y:2004},{t:"American Idiot",a:"Green Day",y:2004},
+{t:"Welcome to the Black Parade",a:"My Chemical Romance",y:2006},{t:"SexyBack",a:"Justin Timberlake",y:2006},{t:"Rehab",a:"Amy Winehouse",y:2006},{t:"Valerie",a:"Amy Winehouse",y:2006},{t:"Grace Kelly",a:"MIKA",y:2007},{t:"Umbrella",a:"Rihanna",y:2007},{t:"Stronger",a:"Kanye West",y:2007},{t:"Viva la Vida",a:"Coldplay",y:2008},{t:"Love Story",a:"Taylor Swift",y:2008},{t:"Poker Face",a:"Lady Gaga",y:2008},
+{t:"Just Dance",a:"Lady Gaga",y:2008},{t:"Use Somebody",a:"Kings of Leon",y:2008},{t:"Sex on Fire",a:"Kings of Leon",y:2008},{t:"Empire State of Mind",a:"Jay-Z",y:2009},{t:"Single Ladies",a:"Beyonce",y:2008},{t:"Halo",a:"Beyonce",y:2008},{t:"Boom Boom Pow",a:"Black Eyed Peas",y:2009},{t:"I Gotta Feeling",a:"Black Eyed Peas",y:2009},{t:"Bad Romance",a:"Lady Gaga",y:2009},{t:"Telephone",a:"Lady Gaga",y:2009},
+{t:"Somebody That I Used to Know",a:"Gotye",y:2011},{t:"Rolling in the Deep",a:"Adele",y:2010},{t:"Someone Like You",a:"Adele",y:2011},{t:"Pumped Up Kicks",a:"Foster the People",y:2010},{t:"We Found Love",a:"Rihanna",y:2011},{t:"Call Me Maybe",a:"Carly Rae Jepsen",y:2012},{t:"Gangnam Style",a:"PSY",y:2012},{t:"Thrift Shop",a:"Macklemore",y:2012},{t:"Mirrors",a:"Justin Timberlake",y:2013},{t:"Get Lucky",a:"Daft Punk",y:2013},
+{t:"Royals",a:"Lorde",y:2013},{t:"Dark Horse",a:"Katy Perry",y:2013},{t:"Happy",a:"Pharrell Williams",y:2013},{t:"Stay With Me",a:"Sam Smith",y:2014},{t:"Shake It Off",a:"Taylor Swift",y:2014},{t:"Uptown Funk",a:"Mark Ronson",y:2014},{t:"Thinking Out Loud",a:"Ed Sheeran",y:2014},{t:"Hotline Bling",a:"Drake",y:2015},{t:"Hello",a:"Adele",y:2015},{t:"Sorry",a:"Justin Bieber",y:2015},
+{t:"Love Yourself",a:"Justin Bieber",y:2015},{t:"Work",a:"Rihanna",y:2016},{t:"One Dance",a:"Drake",y:2016},{t:"Can't Stop the Feeling",a:"Justin Timberlake",y:2016},{t:"Cheap Thrills",a:"Sia",y:2016},{t:"Closer",a:"The Chainsmokers",y:2016},{t:"Shape of You",a:"Ed Sheeran",y:2017},{t:"Despacito",a:"Luis Fonsi",y:2017},{t:"Humble",a:"Kendrick Lamar",y:2017},{t:"God's Plan",a:"Drake",y:2018},
+{t:"Rockstar",a:"Post Malone",y:2017},{t:"Sunflower",a:"Post Malone",y:2018},{t:"Thank U Next",a:"Ariana Grande",y:2018},{t:"7 Rings",a:"Ariana Grande",y:2019},{t:"Shallow",a:"Lady Gaga",y:2018},{t:"Someone You Loved",a:"Lewis Capaldi",y:2018},{t:"Old Town Road",a:"Lil Nas X",y:2019},{t:"Drops of Jupiter",a:"Train",y:2001},{t:"Right Round",a:"Flo Rida",y:2009},{t:"Without Me",a:"Halsey",y:2018},
+{t:"Beautiful",a:"Christina Aguilera",y:2002},{t:"Hurt",a:"Christina Aguilera",y:2006},{t:"Before He Cheats",a:"Carrie Underwood",y:2005},{t:"Crazy",a:"Gnarls Barkley",y:2006},{t:"Beautiful Girls",a:"Sean Kingston",y:2007},{t:"Low",a:"Flo Rida",y:2007},{t:"Apologize",a:"Timbaland",y:2007},{t:"Paper Planes",a:"M.I.A.",y:2007},{t:"Bleeding Love",a:"Leona Lewis",y:2007},{t:"Poker Face",a:"Lady Gaga",y:2008},
+{t:"Dog Days Are Over",a:"Florence + The Machine",y:2009},{t:"Jar of Hearts",a:"Christina Perri",y:2010},{t:"Rolling in the Deep",a:"Adele",y:2010},{t:"Moves Like Jagger",a:"Maroon 5",y:2011},{t:"Somebody That I Used to Know",a:"Gotye",y:2011}
+],
+'actual':[
+{t:"Bad Guy",a:"Billie Eilish",y:2019},{t:"Blinding Lights",a:"The Weeknd",y:2019},{t:"Watermelon Sugar",a:"Harry Styles",y:2020},{t:"drivers license",a:"Olivia Rodrigo",y:2021},{t:"Levitating",a:"Dua Lipa",y:2020},{t:"As It Was",a:"Harry Styles",y:2022},{t:"Anti-Hero",a:"Taylor Swift",y:2022},{t:"Flowers",a:"Miley Cyrus",y:2023},{t:"Cruel Summer",a:"Taylor Swift",y:2019},{t:"Unholy",a:"Sam Smith",y:2022},
+{t:"Shakira Bzrp 53",a:"Bizarrap",y:2023},{t:"Heat Waves",a:"Glass Animals",y:2020},{t:"Stay",a:"Justin Bieber",y:2021},{t:"Peaches",a:"Justin Bieber",y:2021},{t:"Good 4 U",a:"Olivia Rodrigo",y:2021},{t:"brutal",a:"Olivia Rodrigo",y:2021},{t:"vampire",a:"Olivia Rodrigo",y:2023},{t:"Butter",a:"BTS",y:2021},{t:"Dynamite",a:"BTS",y:2020},{t:"Easy On Me",a:"Adele",y:2021},
+{t:"Cold Heart",a:"Elton John",y:2021},{t:"INDUSTRY BABY",a:"Lil Nas X",y:2021},{t:"MONTERO",a:"Lil Nas X",y:2021},{t:"Save Your Tears",a:"The Weeknd",y:2020},{t:"Midnight Rain",a:"Taylor Swift",y:2022},{t:"Bejeweled",a:"Taylor Swift",y:2022},{t:"Lavender Haze",a:"Taylor Swift",y:2022},{t:"Texas Hold Em",a:"Beyonce",y:2024},{t:"Cuff It",a:"Beyonce",y:2022},{t:"BREAK MY SOUL",a:"Beyonce",y:2022},
+{t:"Late Night Talking",a:"Harry Styles",y:2022},{t:"Bad Habits",a:"Ed Sheeran",y:2021},{t:"Shivers",a:"Ed Sheeran",y:2021},{t:"About Damn Time",a:"Lizzo",y:2022},{t:"Rush",a:"Troye Sivan",y:2023},{t:"Dance the Night",a:"Dua Lipa",y:2023},{t:"Houdini",a:"Dua Lipa",y:2023},{t:"Die For You",a:"The Weeknd",y:2022},{t:"Golden Hour",a:"JVKE",y:2022},{t:"Un Verano Sin Ti",a:"Bad Bunny",y:2022},
+{t:"Me Porto Bonito",a:"Bad Bunny",y:2022},{t:"Titi Me Pregunto",a:"Bad Bunny",y:2022},{t:"El Apagon",a:"Bad Bunny",y:2022},{t:"Yonaguni",a:"Bad Bunny",y:2021},{t:"Dakiti",a:"Bad Bunny",y:2020},{t:"La Fama",a:"Rosalia",y:2021},{t:"SAOKO",a:"Rosalia",y:2022},{t:"greedy",a:"Tate McRae",y:2023},{t:"Kill Bill",a:"SZA",y:2022},{t:"Snooze",a:"SZA",y:2022},
+{t:"Players",a:"Coi Leray",y:2023},{t:"TQG",a:"Karol G",y:2023},{t:"PROVENZA",a:"Karol G",y:2022},{t:"Bichota",a:"Karol G",y:2020},{t:"Tusa",a:"Karol G",y:2019},{t:"Mamiii",a:"Karol G",y:2022},{t:"Amorfoda",a:"Bad Bunny",y:2018},{t:"Moscow Mule",a:"Bad Bunny",y:2022},{t:"Permission to Dance",a:"BTS",y:2021},{t:"Oh My God",a:"Adele",y:2021},
+{t:"Heartless",a:"The Weeknd",y:2019},{t:"Speak Now",a:"Taylor Swift",y:2023},{t:"Shirt",a:"SZA",y:2022},{t:"Special",a:"Lizzo",y:2022},{t:"Seven",a:"Jung Kook",y:2023},{t:"Cupid",a:"FIFTY FIFTY",y:2023},{t:"Efecto",a:"Bad Bunny",y:2022},{t:"La Noche de Anoche",a:"Bad Bunny",y:2021},{t:"I'm Good",a:"David Guetta",y:2022},{t:"Escapism",a:"RAYE",y:2022},
+{t:"Levii Jeans",a:"Beyonce",y:2023},{t:"Despecha",a:"Rosalia",y:2022},{t:"Karma",a:"Taylor Swift",y:2022},{t:"Overpass Graffiti",a:"Ed Sheeran",y:2021},{t:"Lie To Me",a:"Tate McRae",y:2023},{t:"boy's a liar",a:"PinkPantheress",y:2023},{t:"traitor",a:"Olivia Rodrigo",y:2021},{t:"Quevedo Bzrp 52",a:"Bizarrap",y:2022},{t:"Calm Down",a:"Rema",y:2022},{t:"Padam Padam",a:"Kylie Minogue",y:2023},
+{t:"Cruel Summer",a:"Taylor Swift",y:2023},{t:"Feather",a:"Sabrina Carpenter",y:2023},{t:"Espresso",a:"Sabrina Carpenter",y:2024},{t:"Please Please Please",a:"Sabrina Carpenter",y:2024},{t:"Taste",a:"Sabrina Carpenter",y:2024},{t:"Birds of a Feather",a:"Billie Eilish",y:2024},{t:"Lunch",a:"Billie Eilish",y:2024},{t:"Too Sweet",a:"Hozier",y:2024},{t:"Beautiful Things",a:"Benson Boone",y:2024},{t:"Good Luck Babe",a:"Chappell Roan",y:2024},
+{t:"Pink Pony Club",a:"Chappell Roan",y:2023},{t:"Femininomenon",a:"Chappell Roan",y:2023},{t:"Stargazing",a:"Myles Smith",y:2024},{t:"Die With A Smile",a:"Lady Gaga & Bruno Mars",y:2024},{t:"APT.",a:"ROSÉ & Bruno Mars",y:2024}
+],
+'española':[
+{t:"Hijo de la Luna",a:"Mecano",y:1986},{t:"Me Cuesta Tanto Olvidarte",a:"Mecano",y:1988},{t:"Cruz de Navajas",a:"Mecano",y:1986},{t:"Mujer Contra Mujer",a:"Mecano",y:1988},{t:"En el Muelle de San Blas",a:"Mana",y:1992},{t:"Oye Mi Amor",a:"Mana",y:1990},{t:"Vivir Sin Aire",a:"Mana",y:1993},{t:"Corazon Espinado",a:"Mana",y:1999},{t:"Corazon Partio",a:"Alejandro Sanz",y:1997},{t:"La Tortura",a:"Shakira",y:2005},
+{t:"Waka Waka",a:"Shakira",y:2010},{t:"Hips Don't Lie",a:"Shakira",y:2006},{t:"Chantaje",a:"Shakira",y:2016},{t:"Te Felicito",a:"Shakira",y:2022},{t:"Bzrp Session 53",a:"Bizarrap & Shakira",y:2023},{t:"Despacito",a:"Luis Fonsi",y:2017},{t:"Echame la Culpa",a:"Luis Fonsi",y:2017},{t:"Danza Kuduro",a:"Don Omar",y:2010},{t:"Gasolina",a:"Daddy Yankee",y:2004},{t:"Con Calma",a:"Daddy Yankee",y:2019},
+{t:"Malamente",a:"Rosalia",y:2017},{t:"Con Altura",a:"Rosalia",y:2019},{t:"Despecha",a:"Rosalia",y:2022},{t:"Bizcochito",a:"Rosalia",y:2022},{t:"La Fama",a:"Rosalia",y:2021},{t:"Mala Mujer",a:"C. Tangana",y:2019},{t:"Nominao",a:"C. Tangana",y:2020},{t:"Tu Me Dejaste de Querer",a:"C. Tangana",y:2021},{t:"Loco",a:"Enrique Iglesias",y:2011},{t:"Bailando",a:"Enrique Iglesias",y:2014},
+{t:"Hero",a:"Enrique Iglesias",y:2001},{t:"Subeme la Radio",a:"Enrique Iglesias",y:2017},{t:"Amor Secreto",a:"Camilo",y:2020},{t:"Vida de Rico",a:"Camilo",y:2020},{t:"KESI",a:"Camilo",y:2021},{t:"Hawai",a:"Maluma",y:2020},{t:"Felices los 4",a:"Maluma",y:2017},{t:"Bichota",a:"Karol G",y:2020},{t:"Tusa",a:"Karol G",y:2019},{t:"Mamiii",a:"Karol G",y:2022},
+{t:"PROVENZA",a:"Karol G",y:2022},{t:"TQG",a:"Karol G",y:2023},{t:"Dakiti",a:"Bad Bunny",y:2020},{t:"Me Porto Bonito",a:"Bad Bunny",y:2022},{t:"El Apagon",a:"Bad Bunny",y:2022},{t:"Cuanto Te Quiero",a:"Melendi",y:2011},{t:"Tu Jardin con Enanitos",a:"Melendi",y:2010},{t:"Clandestino",a:"Manu Chao",y:1998},{t:"Me Gustas Tu",a:"Manu Chao",y:2001},{t:"Entre Dos Tierras",a:"Heroes del Silencio",y:1990},
+{t:"La Chispa Adecuada",a:"Heroes del Silencio",y:1993},{t:"Mi Carro",a:"La Oreja de Van Gogh",y:2003},{t:"Resistire",a:"Duo Dinamico",y:1988},{t:"Mediterraneo",a:"Joan Manuel Serrat",y:1971},{t:"Libre",a:"Nino Bravo",y:1972},{t:"No Es Lo Mismo",a:"Alejandro Sanz",y:2003},{t:"Ella",a:"Bebe",y:2004},{t:"Malo",a:"Bebe",y:2004},{t:"Antes de Morirme",a:"C. Tangana",y:2019},{t:"Nunca Estoy",a:"C. Tangana",y:2021},
+{t:"Perdon",a:"Nicky Jam",y:2015},{t:"X",a:"Nicky Jam",y:2018},{t:"La Noche de Anoche",a:"Bad Bunny",y:2021},{t:"Ropa Cara",a:"Camilo",y:2020},{t:"Mi Gente",a:"J Balvin",y:2017},{t:"Ginza",a:"J Balvin",y:2015},{t:"Tu y Yo",a:"Enrique Iglesias",y:2013},{t:"Quiero",a:"Miguel Bose",y:1990},{t:"La Vida es Una",a:"Manu Chao",y:1998},{t:"Yonaguni",a:"Bad Bunny",y:2021},
+{t:"Besos en la Frente",a:"Camilo",y:2022},{t:"Borracho",a:"Maluma",y:2019},{t:"Me Quedo Contigo",a:"Los Chunguitos",y:1981},{t:"Y Solo Se Me Ocurre Amarte",a:"Alejandro Sanz",y:2000},{t:"Aute Cuture",a:"Rosalia",y:2019},{t:"Hong Kong",a:"C. Tangana",y:2021},{t:"Amiga mia",a:"Alejandro Sanz",y:1995},{t:"Camina",a:"Camela",y:1995},{t:"Efecto",a:"Bad Bunny",y:2022},{t:"El Alma Al Aire",a:"Alejandro Sanz",y:2000},
+{t:"Llorare",a:"La Quinta Estacion",y:2002},{t:"El Sol No Regresa",a:"La Quinta Estacion",y:2005},{t:"Se Me Olvido Otra Vez",a:"Juan Gabriel",y:1979},{t:"Querida",a:"Juan Gabriel",y:1984},{t:"Como la Flor",a:"Selena",y:1992},{t:"Bidi Bidi Bom Bom",a:"Selena",y:1994},{t:"Si Una Vez",a:"Selena",y:1994},{t:"No Me Queda Mas",a:"Selena",y:1995},{t:"Eres Mi Religion",a:"Mana",y:2002},{t:"Te Vi Venir",a:"Morat",y:2022},
+{t:"Bandido",a:"Morat & Juanes",y:2019},{t:"No Te Vayas",a:"Nicky Jam",y:2017},{t:"Safari",a:"J Balvin",y:2016},{t:"Reggaeton Lento",a:"CNCO",y:2016},{t:"Ritmo",a:"Black Eyed Peas & J Balvin",y:2019}
+],
+'italiana':[
+{t:"Volare",a:"Domenico Modugno",y:1958},{t:"Azzurro",a:"Adriano Celentano",y:1968},{t:"Il Mondo",a:"Jimmy Fontana",y:1963},{t:"Felicita",a:"Al Bano & Romina Power",y:1982},{t:"Ci Sara",a:"Al Bano & Romina Power",y:1984},{t:"Sharazan",a:"Ricchi e Poveri",y:1981},{t:"Mamma Maria",a:"Ricchi e Poveri",y:1982},{t:"Sara Perche Ti Amo",a:"Ricchi e Poveri",y:1981},{t:"Grande Grande Grande",a:"Mina",y:1972},{t:"Ancora Ancora Ancora",a:"Mina",y:1978},
+{t:"Tintarella di Luna",a:"Mina",y:1960},{t:"L'Italiano",a:"Toto Cutugno",y:1983},{t:"Insieme 1992",a:"Toto Cutugno",y:1990},{t:"Con Te Partiro",a:"Andrea Bocelli",y:1995},{t:"Time to Say Goodbye",a:"Andrea Bocelli",y:1996},{t:"Gloria",a:"Umberto Tozzi",y:1979},{t:"Ti Amo",a:"Umberto Tozzi",y:1977},{t:"Gente di Mare",a:"Tozzi & Raf",y:1987},{t:"Self Control",a:"Raf",y:1984},{t:"Cosa Restera",a:"Raf",y:1986},
+{t:"Musica",a:"Eros Ramazzotti",y:1988},{t:"Piu Bella Cosa",a:"Eros Ramazzotti",y:1996},{t:"Un Emozione per Sempre",a:"Eros Ramazzotti",y:2003},{t:"Fuoco nel Fuoco",a:"Eros Ramazzotti",y:2009},{t:"Non Siamo Soli",a:"Eros Ramazzotti",y:2006},{t:"Rimmel",a:"Francesco De Gregori",y:1975},{t:"Bella",a:"Jovanotti",y:2008},{t:"L'Ombelico del Mondo",a:"Jovanotti",y:1995},{t:"A Te",a:"Jovanotti",y:2008},{t:"Penso Positivo",a:"Jovanotti",y:1994},
+{t:"Vita Spericolata",a:"Vasco Rossi",y:1983},{t:"Albachiara",a:"Vasco Rossi",y:1979},{t:"Siamo Solo Noi",a:"Vasco Rossi",y:1981},{t:"Senza Parole",a:"Vasco Rossi",y:1995},{t:"Sally",a:"Vasco Rossi",y:2000},{t:"Rewind",a:"Vasco Rossi",y:1981},{t:"Anima Fragile",a:"Vasco Rossi",y:1982},{t:"Come Sei Bella",a:"Gianni Morandi",y:1968},{t:"Bella Signora",a:"Gianni Morandi",y:1989},{t:"Uno su Mille",a:"Gianni Morandi",y:1985},
+{t:"Almeno Tu nell Universo",a:"Mia Martini",y:1989},{t:"Minuetto",a:"Mia Martini",y:1973},{t:"4 Marzo 1943",a:"Lucio Dalla",y:1971},{t:"L Anno che Verra",a:"Lucio Dalla",y:1980},{t:"Caruso",a:"Lucio Dalla",y:1986},{t:"E Penso a Te",a:"Lucio Battisti",y:1970},{t:"Il Mio Canto Libero",a:"Lucio Battisti",y:1972},{t:"Emozioni",a:"Lucio Battisti",y:1970},{t:"Acqua Azzurra Acqua Chiara",a:"Lucio Battisti",y:1969},{t:"La Canzone del Sole",a:"Lucio Battisti",y:1971},
+{t:"Questo Piccolo Grande Amore",a:"Claudio Baglioni",y:1972},{t:"Avrai",a:"Claudio Baglioni",y:1982},{t:"Strada Facendo",a:"Claudio Baglioni",y:1981},{t:"La Vita e Adesso",a:"Claudio Baglioni",y:1985},{t:"La Solitudine",a:"Laura Pausini",y:1993},{t:"Strani Amori",a:"Laura Pausini",y:1994},{t:"Non c'e",a:"Laura Pausini",y:2000},{t:"Tra Te e il Mare",a:"Laura Pausini",y:2000},{t:"Io Canto",a:"Laura Pausini",y:2006},{t:"White Flag",a:"Laura Pausini",y:2013},
+{t:"Napule e",a:"Pino Daniele",y:1977},{t:"Quando",a:"Pino Daniele",y:1984},{t:"Vivo per Lei",a:"Andrea Bocelli",y:1995},{t:"Senza una Donna",a:"Zucchero",y:1991},{t:"Diamante",a:"Zucchero",y:1991},{t:"Dune Mosse",a:"Zucchero",y:1996},{t:"Baila",a:"Zucchero",y:1995},{t:"Come Vorrei",a:"Zucchero",y:1987},{t:"Per Elisa",a:"Alice",y:1981},{t:"Bella Senz Anima",a:"Riccardo Cocciante",y:1974},
+{t:"La Donna Cannone",a:"Francesco De Gregori",y:1983},{t:"Buonanotte Fiorellino",a:"Francesco De Gregori",y:1975},{t:"Generale",a:"Francesco De Gregori",y:1978},{t:"Fatti Mandare dalla Mamma",a:"Gianni Morandi",y:1964},{t:"Fiumi di Parole",a:"Jalisse",y:1997},{t:"Il Mare Calmo della Sera",a:"Andrea Bocelli",y:1994},{t:"O Sole Mio",a:"Luciano Pavarotti",y:1990},{t:"In Questa Storia",a:"Claudio Baglioni",y:1985},{t:"Vola",a:"Riccardo Cocciante",y:1982},{t:"Romagna Mia",a:"Raoul Casadei",y:1958},
+{t:"Azzurro",a:"Paolo Conte",y:1975},{t:"Via con me",a:"Paolo Conte",y:1981},{t:"L'Estate Sta Finendo",a:"Righeira",y:1985},{t:"Sarà Perché Ti Amo",a:"Ricchi e Poveri",y:1981},{t:"Perdere l'Amore",a:"Massimo Ranieri",y:1988},{t:"Piccolo Uomo",a:"Mia Martini",y:1972},{t:"Un'Estate Italiana",a:"Gianna Nannini",y:1990},{t:"Bello e Impossibile",a:"Gianna Nannini",y:1986},{t:"America",a:"Gianna Nannini",y:1979},{t:"La Prima Cosa Bella",a:"Nicola di Bari",y:1971},
+{t:"Che Sara",a:"Jose Feliciano",y:1971},{t:"Azzurra",a:"Pino Daniele",y:1988},{t:"Tango Italiano",a:"Fiorella Mannoia",y:1986},{t:"Quello che le donne non dicono",a:"Fiorella Mannoia",y:1987},{t:"Vivere",a:"Andrea Bocelli",y:1995}
+],
+'mixta':[
+{t:"Bohemian Rhapsody",a:"Queen",y:1975},{t:"Billie Jean",a:"Michael Jackson",y:1983},{t:"Smells Like Teen Spirit",a:"Nirvana",y:1991},{t:"Rolling in the Deep",a:"Adele",y:2010},{t:"Blinding Lights",a:"The Weeknd",y:2019},{t:"Anti-Hero",a:"Taylor Swift",y:2022},{t:"Despacito",a:"Luis Fonsi",y:2017},{t:"Corazon Partio",a:"Alejandro Sanz",y:1997},{t:"Hotel California",a:"Eagles",y:1977},{t:"Wonderwall",a:"Oasis",y:1995},
+{t:"Shallow",a:"Lady Gaga",y:2018},{t:"Shape of You",a:"Ed Sheeran",y:2017},{t:"Flowers",a:"Miley Cyrus",y:2023},{t:"La Tortura",a:"Shakira",y:2005},{t:"Con Altura",a:"Rosalia",y:2019},{t:"Gasolina",a:"Daddy Yankee",y:2004},{t:"Uptown Funk",a:"Mark Ronson",y:2014},{t:"Get Lucky",a:"Daft Punk",y:2013},{t:"Poker Face",a:"Lady Gaga",y:2008},{t:"Dancing Queen",a:"ABBA",y:1976},
+{t:"Stayin Alive",a:"Bee Gees",y:1977},{t:"Africa",a:"Toto",y:1982},{t:"Take On Me",a:"a-ha",y:1985},{t:"Every Breath You Take",a:"The Police",y:1983},{t:"Nothing Compares 2 U",a:"Sinead O Connor",y:1990},{t:"Lose Yourself",a:"Eminem",y:2002},{t:"Crazy in Love",a:"Beyonce",y:2003},{t:"Gangnam Style",a:"PSY",y:2012},{t:"Royals",a:"Lorde",y:2013},{t:"Bad Guy",a:"Billie Eilish",y:2019},
+{t:"drivers license",a:"Olivia Rodrigo",y:2021},{t:"Levitating",a:"Dua Lipa",y:2020},{t:"Bichota",a:"Karol G",y:2020},{t:"Dakiti",a:"Bad Bunny",y:2020},{t:"Hijo de la Luna",a:"Mecano",y:1986},{t:"Entre Dos Tierras",a:"Heroes del Silencio",y:1990},{t:"My Way",a:"Frank Sinatra",y:1969},{t:"Heroes",a:"David Bowie",y:1977},{t:"Imagine",a:"John Lennon",y:1971},{t:"Purple Haze",a:"Jimi Hendrix",y:1967},
+{t:"Tainted Love",a:"Soft Cell",y:1981},{t:"Jump",a:"Van Halen",y:1984},{t:"Sweet Child O Mine",a:"Guns N Roses",y:1988},{t:"Creep",a:"Radiohead",y:1992},{t:"Bittersweet Symphony",a:"The Verve",y:1997},{t:"In the End",a:"Linkin Park",y:2000},{t:"Rehab",a:"Amy Winehouse",y:2006},{t:"Grace Kelly",a:"MIKA",y:2007},{t:"Viva la Vida",a:"Coldplay",y:2008},{t:"Empire State of Mind",a:"Jay-Z",y:2009},
+{t:"Pumped Up Kicks",a:"Foster the People",y:2010},{t:"Call Me Maybe",a:"Carly Rae Jepsen",y:2012},{t:"Happy",a:"Pharrell Williams",y:2013},{t:"Stay With Me",a:"Sam Smith",y:2014},{t:"Hello",a:"Adele",y:2015},{t:"Hotline Bling",a:"Drake",y:2015},{t:"Can't Stop the Feeling",a:"Justin Timberlake",y:2016},{t:"Humble",a:"Kendrick Lamar",y:2017},{t:"God's Plan",a:"Drake",y:2018},{t:"Watermelon Sugar",a:"Harry Styles",y:2020},
+{t:"As It Was",a:"Harry Styles",y:2022},{t:"TQG",a:"Karol G",y:2023},{t:"Malamente",a:"Rosalia",y:2017},{t:"Bailando",a:"Enrique Iglesias",y:2014},{t:"Tusa",a:"Karol G",y:2019},{t:"Me Porto Bonito",a:"Bad Bunny",y:2022},{t:"Mala Mujer",a:"C. Tangana",y:2019},{t:"Libre",a:"Nino Bravo",y:1972},{t:"Resistire",a:"Duo Dinamico",y:1988},{t:"Clandestino",a:"Manu Chao",y:1998},
+{t:"Waka Waka",a:"Shakira",y:2010},{t:"Con Te Partiro",a:"Andrea Bocelli",y:1995},{t:"Volare",a:"Domenico Modugno",y:1958},{t:"Gloria",a:"Umberto Tozzi",y:1979},{t:"Felicita",a:"Al Bano & Romina Power",y:1982},{t:"Vida de Rico",a:"Camilo",y:2020},{t:"Oye Mi Amor",a:"Mana",y:1990},{t:"My Heart Will Go On",a:"Celine Dion",y:1997},{t:"Self Control",a:"Raf",y:1984},{t:"Vita Spericolata",a:"Vasco Rossi",y:1983},
+{t:"La Solitudine",a:"Laura Pausini",y:1993},{t:"Piu Bella Cosa",a:"Eros Ramazzotti",y:1996},{t:"L'Italiano",a:"Toto Cutugno",y:1983},{t:"Mamma Maria",a:"Ricchi e Poveri",y:1982},{t:"Somebody That I Used to Know",a:"Gotye",y:2011},{t:"Shake It Off",a:"Taylor Swift",y:2014},{t:"Cruel Summer",a:"Taylor Swift",y:2019},{t:"Someone Like You",a:"Adele",y:2011},{t:"Smells Like Teen Spirit",a:"Nirvana",y:1991},{t:"Like a Rolling Stone",a:"Bob Dylan",y:1965},
+{t:"Espresso",a:"Sabrina Carpenter",y:2024},{t:"Too Sweet",a:"Hozier",y:2024},{t:"Beautiful Things",a:"Benson Boone",y:2024},{t:"Good Luck Babe",a:"Chappell Roan",y:2024},{t:"Die With A Smile",a:"Lady Gaga & Bruno Mars",y:2024}
+]
+};
+
+// ── Verify 95 songs per catalog ──
+Object.keys(CATALOGS).forEach(k=>{
+  if(CATALOGS[k].length<95){
+    while(CATALOGS[k].length<95) CATALOGS[k].push(CATALOGS[k][Math.floor(Math.random()*CATALOGS[k].length)]);
+  }
+});
+
+// Show home screen only if not a QR card link
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  if(!params.get('p')){
+    var h=document.getElementById('screen-home');
+    if(h) h.classList.add('active');
+  }
+})();
+
+const ERA_LABELS={'70s':'🕺 70s·80s·90s','2000s':'💿 Años 2000','actual':'🔥 Actuales','española':'🇪🇸 Españolas','italiana':'🇮🇹 Italianas','mixta':'🎲 Mixta'};
+
+// ── STATE ──
+let SONGS=[],selectedEra='',players=[],playerCards=[],shuffledSongs=[];
+let calledIndex=0,calledSet=new Set(),isPaused=false,isMuted=false,lastVol=0.8;
+const calledHistory=[];
+
+// ── AUDIO — iOS + Desktop compatible ──
+// Key insight for iOS Safari:
+// 1. Audio element must be created and .play() called inside a user gesture handler
+// 2. We pre-create the element but call play() only from button click chain
+// 3. We use a persistent Audio element and just change src each time
+
+const ael = new Audio();
+ael.preload = 'none';
+
+// iOS unlock: create a silent buffer on first touch/click
+let iosUnlocked = false;
+function iosUnlock() {
+  if (iosUnlocked) return;
+  iosUnlocked = true;
+  // Attempt to play silence to unlock audio context on iOS
+  const silence = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+  const tmp = new Audio(silence);
+  tmp.volume = 0;
+  tmp.play().catch(() => {});
+}
+document.addEventListener('touchstart', iosUnlock, { once: true, passive: true });
+document.addEventListener('click', iosUnlock, { once: true });
+
+// Audio event listeners
+ael.addEventListener('timeupdate', () => {
+  if (!ael.duration) return;
+  const pct = (ael.currentTime / ael.duration * 100);
+  const pf = document.getElementById('prog-fill');
+  if (pf) pf.style.width = pct + '%';
+  const tc = document.getElementById('t-cur');
+  const tt = document.getElementById('t-tot');
+  if (tc) tc.textContent = fmt(ael.currentTime);
+  if (tt) tt.textContent = fmt(ael.duration);
+});
+ael.addEventListener('playing', () => setDot('playing', '🎵 Reproduciendo'));
+ael.addEventListener('pause',   () => setDot('', 'Pausado'));
+ael.addEventListener('ended',   () => {
+  setDot('', 'Preview terminada ✓');
+  const pf = document.getElementById('prog-fill');
+  if (pf) pf.style.width = '100%';
+});
+ael.addEventListener('error', () => setDot('error', 'Sin preview para esta canción'));
+ael.addEventListener('stalled', () => setDot('loading', 'Cargando…'));
+
+
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+}
+function setDot(st, tx) {
+  const d = document.getElementById('a-dot');
+  if (!d) return;
+  d.className = 'a-dot' + (st ? ' ' + st : '');
+  const at = document.getElementById('a-txt');
+  if (at) at.textContent = tx;
+}
+
+// ── AUDIO ENGINE ──
+// iOS Safari fix: play() must be called synchronously within user gesture.
+// Solution: pre-fetch the preview URL BEFORE the user taps next,
+// so when they tap, we set src + play() with zero async in between.
+
+const previewCache = {}; // songIdx -> previewUrl | null | 'none'
+
+// Fetch preview URL silently in background
+function fetchPreviewUrl(songIdx) {
+  if (previewCache[songIdx] !== undefined) return; // already done or in progress
+  previewCache[songIdx] = 'fetching';
+  const s = SONGS[songIdx];
+  if (!s) { previewCache[songIdx] = 'none'; return; }
+
+  const q = encodeURIComponent(s.t + ' ' + s.a);
+  fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=10')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      const tr = (d.results || []).find(function(x) { return x.previewUrl; });
+      if (tr) {
+        previewCache[songIdx] = tr.previewUrl;
+      } else {
+        // Retry with title only
+        const q2 = encodeURIComponent(s.t);
+        return fetch('https://itunes.apple.com/search?term=' + q2 + '&media=music&entity=song&limit=10')
+          .then(function(r2) { return r2.json(); })
+          .then(function(d2) {
+            const tr2 = (d2.results || []).find(function(x) { return x.previewUrl; });
+            previewCache[songIdx] = tr2 ? tr2.previewUrl : 'none';
+          });
+      }
+    })
+    .catch(function() { previewCache[songIdx] = 'none'; });
+}
+
+function loadAndPlay(song, songIdx) {
+  ael.pause();
+  ael.src = '';
+
+  const box = document.getElementById('audio-box');
+  const pf  = document.getElementById('prog-fill');
+  const tc  = document.getElementById('t-cur');
+  if (box) box.style.display = 'block';
+  if (pf)  pf.style.width = '0%';
+  if (tc)  tc.textContent = '0:00';
+  const volEl = document.getElementById('vol-sl');
+  ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
+
+  const cached = previewCache[songIdx];
+
+  if (cached && cached !== 'fetching' && cached !== 'none') {
+    // URL ready — play synchronously (iOS happy)
+    setDot('loading', 'Cargando…');
+    ael.src = cached;
+    ael.play().catch(function() { setDot('', '▶ Toca Reanudar para escuchar'); });
+
+  } else if (cached === 'none') {
+    setDot('error', 'Sin preview para esta canción');
+
+  } else {
+    // Not ready yet (first song or slow network) — fetch and play
+    // This works on iOS for the first tap since audio is already unlocked
+    setDot('loading', 'Buscando preview…');
+    const q = encodeURIComponent(song.t + ' ' + song.a);
+    fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=10')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        const tr = (d.results || []).find(function(x) { return x.previewUrl; });
+        if (!tr) {
+          // Try title only
+          const q2 = encodeURIComponent(song.t);
+          return fetch('https://itunes.apple.com/search?term=' + q2 + '&media=music&entity=song&limit=10')
+            .then(function(r2) { return r2.json(); })
+            .then(function(d2) {
+              const tr2 = (d2.results || []).find(function(x) { return x.previewUrl; });
+              if (tr2) { previewCache[songIdx] = tr2.previewUrl; playUrl(tr2.previewUrl); }
+              else { previewCache[songIdx] = 'none'; setDot('error', 'Sin preview para esta canción'); }
+            });
+        }
+        previewCache[songIdx] = tr.previewUrl;
+        playUrl(tr.previewUrl);
+      })
+      .catch(function() { setDot('error', 'Sin preview para esta canción'); });
+  }
+}
+
+function playUrl(url) {
+  setDot('loading', 'Cargando…');
+  ael.src = url;
+  ael.play().catch(function() {
+    setDot('', '▶ Toca Reanudar para escuchar');
+  });
+}
+
+function prefetchPreview(idx) { fetchPreviewUrl(idx); }
+
+function seekAudio(e) {
+  if (!ael.duration) return;
+  const bar = e.currentTarget;
+  ael.currentTime = (e.offsetX / bar.offsetWidth) * ael.duration;
+}
+function setVol(v) {
+  ael.volume = parseFloat(v);
+  isMuted = false;
+  const vi = document.getElementById('vol-icon');
+  if (vi) vi.textContent = parseFloat(v) > 0 ? '🔊' : '🔇';
+}
+function toggleMute() {
+  const vi = document.getElementById('vol-icon');
+  const vs = document.getElementById('vol-sl');
+  if (isMuted) {
+    ael.volume = lastVol;
+    if (vs) vs.value = lastVol;
+    if (vi) vi.textContent = '🔊';
+    isMuted = false;
+  } else {
+    lastVol = ael.volume;
+    ael.volume = 0;
+    if (vs) vs.value = '0';
+    if (vi) vi.textContent = '🔇';
+    isMuted = true;
+  }
+}
+
+// ── SCREENS ──
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+// ── ERA ──
+function selectEra(era){
+  selectedEra=era;SONGS=CATALOGS[era];
+  document.getElementById('era-badge').textContent=ERA_LABELS[era];
+  players=['',''];renderPlayers();
+  showScreen('screen-setup');
+}
+
+// ── SETUP ──
+function addPlayer(){players.push('');renderPlayers();}
+function removePlayer(i){players.splice(i,1);renderPlayers();}
+function renderPlayers(){
+  const el=document.getElementById('players-list');el.innerHTML='';
+  players.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='player-row';
+    d.innerHTML='<input type="text" placeholder="Jugador '+(i+1)+'" value="'+p+'" oninput="players['+i+']=this.value"><button class="btn-rm" onclick="removePlayer('+i+')">✕</button>';
+    el.appendChild(d);
+  });
+}
+
+// ── GENERATE CARDS ──
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+function generateCards(){
+  players=players.filter(p=>p.trim());
+  if(!players.length){toast('Añade al menos un jugador');return;}
+  playerCards=players.map(name=>({name,songs:shuffle([...Array(SONGS.length).keys()]).slice(0,12)}));
+  renderCards();
+  showScreen('screen-cards');
+}
+
+// ── RENDER CARDS: solo nombre + QR cuadrado ──
+function renderCards(){
+  const g=document.getElementById('cards-grid');
+  g.innerHTML='';
+  const baseUrl=window.location.href.split('?')[0].split('#')[0];
+
+  playerCards.forEach(function(pc,pi){
+    const card=document.createElement('div');
+    card.className='player-card';
+
+    const nm=document.createElement('div');
+    nm.className='pc-name';
+    nm.textContent='🎫 '+pc.name;
+    card.appendChild(nm);
+
+    const qrBox=document.createElement('div');
+    qrBox.className='qr-box';
+    qrBox.id='qr-'+pi;
+    card.appendChild(qrBox);
+
+    const hint=document.createElement('div');
+    hint.className='qr-hint';
+    hint.textContent='📱 Escanea para abrir tu cartilla';
+    card.appendChild(hint);
+
+    g.appendChild(card);
+
+    // Short URL QR — easy to scan
+    const url=baseUrl+'?p='+encodeURIComponent(pc.name)+'&e='+encodeURIComponent(selectedEra)+'&s='+pc.songs.join(',');
+    setTimeout(function(){
+      new QRCode(document.getElementById('qr-'+pi),{
+        text:url,
+        width:232,height:232,
+        // force square
+        colorDark:'#000000',colorLight:'#ffffff',
+        correctLevel:QRCode.CorrectLevel.M
+      });
+    },150*pi+150);
+  });
+}
+
+// ── CARD PAGE (shown when QR scanned) ──
+function buildCardPage(pc,eraKey){
+  const era=ERA_LABELS[eraKey]||eraKey||'Bingo Musical';
+  const songs=CATALOGS[eraKey]||[];
+  const cells=pc.songs.map(function(si){
+    const s=songs[si]||{t:'?',a:'?',y:''};
+    return '<div class="cell" onclick="tog(this)">'
+      +'<div class="ck">✓</div>'
+      +'<div class="ct">'+s.t+'</div>'
+      +'<div class="ca">'+s.a+'</div>'
+      +'<div class="cy">'+s.y+'</div>'
+      +'</div>';
+  }).join('');
+  return '<!DOCTYPE html><html lang="es"><head>'
+    +'<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">'
+    +'<title>🎵 '+pc.name+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{background:#0d0d14;color:#f0eeff;font-family:system-ui,sans-serif;padding:16px;min-height:100vh}'
+    +'.logo{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#f5c842;margin-bottom:2px}'
+    +'.era{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#8888aa;margin-bottom:12px}'
+    +'.name{font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#2dd4bf;background:#16161f;border-left:4px solid #2dd4bf;border-radius:10px;padding:10px 14px;margin-bottom:14px}'
+    +'.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}'
+    +'.cell{background:#1e1e2e;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 5px;text-align:center;min-height:70px;display:flex;flex-direction:column;justify-content:center;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;transition:border-color .15s}'
+    +'.cell:active{transform:scale(.93)}'
+    +'.ck{display:none;position:absolute;inset:0;background:rgba(10,40,10,.92);border-radius:10px;font-size:32px;color:#4ade80;align-items:center;justify-content:center;border:1.5px solid #4ade80}'
+    +'.cell.on{border-color:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.3)}'
+    +'.cell.on .ck{display:flex}'
+    +'.cell.on .ct,.cell.on .ca,.cell.on .cy{opacity:.15}'
+    +'.ct{font-size:9.5px;font-weight:700;color:#f0eeff;line-height:1.2;margin-bottom:3px}'
+    +'.ca{font-size:8px;color:#8888aa;line-height:1.2}'
+    +'.cy{font-size:8px;color:#f5c842;margin-top:2px}'
+    +'.bar{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 14px;background:#16161f;border-radius:10px;border:1px solid rgba(255,255,255,.06)}'
+    +'.bar-l{font-size:11px;color:#8888aa;letter-spacing:1px}'
+    +'.bar-n{font-size:24px;font-weight:900;color:#f5c842}'
+    +'.bingo-btn{display:none;width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,#f5c842,#e8a020);border:none;border-radius:12px;color:#111;font-size:20px;font-weight:900;letter-spacing:3px;text-transform:uppercase;cursor:pointer}'
+    +'</style></head><body>'
+    +'<div class="logo">🎵 Bingo Musical</div>'
+    +'<div class="era">'+era+'</div>'
+    +'<div class="name">🎫 '+pc.name+'</div>'
+    +'<div class="grid">'+cells+'</div>'
+    +'<div class="bar"><span class="bar-l">Marcadas</span><span class="bar-n"><span id="n">0</span>/'+pc.songs.length+'</span></div>'
+    +'<button class="bingo-btn" id="bb">🏆 ¡BINGO!</button>'
+    +'<script>function tog(el){el.classList.toggle("on");var n=document.querySelectorAll(".on").length;document.getElementById("n").textContent=n;document.getElementById("bb").style.display=n==='+pc.songs.length+'?"block":"none";}<\/script>'
+    +'</body></html>';
+}
+
+// ── GAME ──
+function startGame(){
+  shuffledSongs=shuffle([...Array(SONGS.length).keys()]);
+  calledIndex=0;calledSet.clear();calledHistory.length=0;isPaused=false;
+  buildBoard();updateStats();
+  document.getElementById('hist-list').innerHTML='<div class="hist-empty">Aún no se ha cantado ninguna canción</div>';
+  document.getElementById('np-title').textContent='Pulsa "Siguiente" para empezar';
+  document.getElementById('np-num').textContent='—';
+  document.getElementById('np-artist').textContent='';
+  document.getElementById('np-year').textContent='';
+  document.getElementById('audio-box').style.display='none';
+  document.getElementById('btn-pause').textContent='⏸ Pausar';
+  document.getElementById('paused-ind').style.display='none';
+  document.getElementById('board-ttl').textContent='📋 Casillero — '+SONGS.length+' canciones';
+  document.getElementById('stat-pl').textContent=playerCards.length;
+  // Pre-fetch first 4 songs immediately
+  setTimeout(function() {
+    for (var _si = 0; _si < 4; _si++) {
+      if (shuffledSongs[_si] !== undefined) fetchPreviewUrl(shuffledSongs[_si]);
+    }
+  }, 500);
+  showScreen('screen-game');
+}
+
+function buildBoard(){
+  const g=document.getElementById('board-grid');g.innerHTML='';
+  SONGS.forEach(function(s,i){
+    const c=document.createElement('div');c.className='bcell';c.id='bc-'+i;
+    c.innerHTML='<div class="bn">#'+(i+1)+'</div><div class="bt">'+s.t+'</div><div class="ba">'+s.a+'</div>';
+    g.appendChild(c);
+  });
+}
+
+function addToHistory(s,num){
+  calledHistory.unshift({s,num});
+  const hl=document.getElementById('hist-list');
+  // Remove empty message
+  const empty=hl.querySelector('.hist-empty');
+  if(empty) empty.remove();
+  // Add new item at top
+  const item=document.createElement('div');
+  item.className='hist-item';
+  item.innerHTML=
+    '<div class="hist-num">#'+num+'</div>'
+    +'<div class="hist-info">'
+    +  '<div class="hist-title">'+s.t+'</div>'
+    +  '<div class="hist-artist">'+s.a+' · '+s.y+'</div>'
+    +'</div>';
+hl.insertBefore(item,hl.firstChild);
+}
+
+function nextSong(){
+  if(isPaused){toast('El juego está pausado');return;}
+  if(calledIndex>=SONGS.length){toast('¡Se han cantado todas las canciones!');return;}
+  const idx=shuffledSongs[calledIndex++];
+  calledSet.add(idx);
+  const s=SONGS[idx];
+  document.getElementById('np-num').textContent='Canción '+calledIndex+' de '+SONGS.length;
+  document.getElementById('np-title').textContent=s.t;
+  document.getElementById('np-artist').textContent=s.a;
+  document.getElementById('np-year').textContent=s.y;
+  loadAndPlay(s, idx);
+  // Prefetch next 3 songs so they're ready instantly
+  for (var _pi = 0; _pi < 3; _pi++) {
+    if (calledIndex + _pi < SONGS.length) {
+      (function(si) { setTimeout(function() { fetchPreviewUrl(si); }, 300 + _pi * 400); })(shuffledSongs[calledIndex + _pi]);
+    }
+  }
+  const bc=document.getElementById('bc-'+idx);
+  if(bc){bc.classList.add('called');bc.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  addToHistory(s,idx+1);  // idx+1 = numero del tablero
+  updateStats();
+}
+
+function togglePause(){
+  isPaused=!isPaused;
+  const btn=document.getElementById('btn-pause');
+  const ind=document.getElementById('paused-ind');
+  if(isPaused){btn.textContent='▶ Reanudar';ind.style.display='block';ael.pause();}
+  else{btn.textContent='⏸ Pausar';ind.style.display='none';if(ael.src)ael.play().catch(()=>{});}
+}
+
+function updateStats(){
+  document.getElementById('stat-called').textContent=calledSet.size;
+  document.getElementById('stat-rem').textContent=SONGS.length-calledSet.size;
+}
+
+// "Nuevo Bingo" — go back to home
+function nuevoBingo(){
+  ael.pause();ael.src='';
+  showScreen('screen-home');
+}
+
+// ── RESET ──
+function confirmReset(){document.getElementById('modal-reset').classList.add('open');}
+function closeModal(){document.getElementById('modal-reset').classList.remove('open');}
+function doReset(){
+  closeModal();ael.pause();ael.src='';Object.keys(previewCache).forEach(function(k){delete previewCache[k];});
+  shuffledSongs=shuffle([...Array(SONGS.length).keys()]);
+  calledIndex=0;calledSet.clear();calledHistory.length=0;isPaused=false;
+  buildBoard();updateStats();
+  document.getElementById('hist-list').innerHTML='<div class="hist-empty">Aún no se ha cantado ninguna canción</div>';
+  document.getElementById('np-title').textContent='Pulsa "Siguiente" para empezar';
+  document.getElementById('np-num').textContent='—';
+  document.getElementById('np-artist').textContent='';
+  document.getElementById('np-year').textContent='';
+  document.getElementById('audio-box').style.display='none';
+  document.getElementById('btn-pause').textContent='⏸ Pausar';
+  document.getElementById('paused-ind').style.display='none';
+  toast('Juego restablecido ✓');
+}
+
+// ── CONFETTI ──
+function launchConfetti(){
+  const cols=['#f5c842','#e8407a','#9b5de5','#2dd4bf','#4ade80','#fb923c'];
+  for(let i=0;i<130;i++){
+    const c=document.createElement('div');
+    c.style.cssText='position:fixed;top:-10px;left:'+Math.random()*100+'vw;width:'+(6+Math.random()*8)+'px;height:'+(6+Math.random()*8)+'px;background:'+cols[i%cols.length]+';border-radius:'+(Math.random()>.5?'50%':'2px')+';z-index:9999;animation:fall '+(2+Math.random()*3)+'s linear '+(Math.random()*1.5)+'s forwards';
+    document.body.appendChild(c);setTimeout(()=>c.remove(),6000);
+  }
+}
+
+// ── TOAST ──
+let _tt;
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('show'),2800);}
+
+// ── QR READER: detect ?p= param and show card directly ──
+// This replaces the ENTIRE page with the card — no home screen shown
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const name=params.get('p');
+  const era=params.get('e');
+  const sIds=params.get('s');
+  if(!name||!era||!sIds)return;
+  const songs=CATALOGS[era]||[];
+  const indices=sIds.split(',').map(Number).filter(n=>n>=0&&n<songs.length);
+  const pc={name:name,songs:indices};
+  const html=buildCardPage(pc,era);
+  document.open();
+  document.write(html);
+  document.close();
+})();
+</script>
+</body>
+</html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🎵 Bingo Musical</title>
