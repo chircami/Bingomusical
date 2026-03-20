@@ -476,27 +476,47 @@ function loadAndPlay(song, songIdx) {
 
   setDot('loading', 'Buscando preview…');
 
-  const q = encodeURIComponent(song.t + ' ' + song.a);
-  fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=8&country=ES')
-    .then(function(r) { return r.json(); })
+  // Try multiple search strategies in sequence
+  var searches = [
+    song.t + ' ' + song.a,   // title + artist
+    song.t,                    // title only
+  ];
+
+  function trySearch(idx) {
+    if (idx >= searches.length) {
+      setDot('error', 'Sin preview para esta canción');
+      return;
+    }
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, 8000);
+    var q = encodeURIComponent(searches[idx]);
+    fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=10', {
+      signal: controller.signal
+    })
+    .then(function(r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(d) {
-      var results = d.results || [];
-      var tr = results.find(function(x) { return x.previewUrl; });
+      var tr = (d.results || []).find(function(x) { return x.previewUrl; });
       if (!tr) {
-        // Try with just title if artist+title fails
-        return fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(song.t) + '&media=music&entity=song&limit=8&country=ES')
-          .then(function(r2) { return r2.json(); })
-          .then(function(d2) {
-            var tr2 = (d2.results || []).find(function(x) { return x.previewUrl; });
-            if (!tr2) { setDot('error', 'Sin preview disponible'); return; }
-            playUrl(tr2.previewUrl);
-          });
+        trySearch(idx + 1); // try next strategy
+        return;
       }
       playUrl(tr.previewUrl);
     })
-    .catch(function() {
-      setDot('error', 'Sin conexión a iTunes');
+    .catch(function(e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') {
+        trySearch(idx + 1); // timeout — try next
+      } else {
+        setDot('error', 'Sin preview para esta canción');
+      }
     });
+  }
+
+  trySearch(0);
 }
 
 function playUrl(url) {
@@ -505,13 +525,12 @@ function playUrl(url) {
   var p = ael.play();
   if (p !== undefined) {
     p.catch(function() {
-      // iOS: if autoplay blocked, show the audio controls so user can tap play
-      setDot('', 'Toca ▶ para escuchar');
+      setDot('', '▶ Toca Reanudar para escuchar');
     });
   }
 }
 
-// Dummy prefetch (kept for compatibility with nextSong calls)
+// Prefetch stub (kept for compatibility)
 function prefetchPreview(idx) {}
 
 function seekAudio(e) {
