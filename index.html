@@ -489,10 +489,7 @@ function loadAndPlay(song, songIdx) {
 
   if (cached && cached !== 'loading' && cached !== 'none') {
     // URL ready — set src and play() synchronously
-    setDot('loading', 'Cargando…');
-    ael.src = cached;
-    ael.load();
-    ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
+    swapAndPlay(cached);
 
   } else if (cached === 'none') {
     setDot('error', 'Sin preview para esta canción');
@@ -530,9 +527,26 @@ function loadAndPlay(song, songIdx) {
 // Swap audio src while keeping iOS session alive
 function swapAndPlay(url) {
   setDot('loading', 'Cargando…');
+  // Remove old listeners to avoid duplicates
+  ael.oncanplay = null;
   ael.src = url;
+  // On iOS: after changing src, wait for canplay before calling play()
+  var played = false;
+  ael.oncanplay = function() {
+    if (played) return;
+    played = true;
+    ael.oncanplay = null;
+    ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
+  };
+  // Fallback: try play() directly in case canplay already fired
+  setTimeout(function() {
+    if (!played) {
+      played = true;
+      ael.oncanplay = null;
+      ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
+    }
+  }, 1500);
   ael.load();
-  ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
 }
 
 function playUrl(url) { swapAndPlay(url); }
@@ -568,7 +582,7 @@ function toggleMute() {
 }
 
 // ── SCREENS ──
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'instant'});}
 
 // ── ERA ──
 function selectEra(era){
