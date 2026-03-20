@@ -416,7 +416,7 @@ function iosUnlock() {
   if (iosUnlocked) return;
   iosUnlocked = true;
   // Attempt to play silence to unlock audio context on iOS
-  const silence = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU2LjM2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU2LjQxAAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV';
+  const silence = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
   const tmp = new Audio(silence);
   tmp.volume = 0;
   tmp.play().catch(() => {});
@@ -445,7 +445,6 @@ ael.addEventListener('ended',   () => {
 ael.addEventListener('error', () => setDot('error', 'Sin preview para esta canción'));
 ael.addEventListener('stalled', () => setDot('loading', 'Cargando…'));
 
-let isMuted = false, lastVol = 0.8;
 
 function fmt(s) {
   if (!s || isNaN(s)) return '0:00';
