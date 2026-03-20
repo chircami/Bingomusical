@@ -402,37 +402,44 @@ let calledIndex=0,calledSet=new Set(),isPaused=false,isMuted=false,lastVol=0.8;
 const calledHistory=[];
 
 // ── AUDIO ENGINE ──
-// iOS Safari requires play() in synchronous user gesture chain.
-// We keep ONE Audio element. On tap we call play() immediately with 
-// current src (or silence), then swap src to the real preview.
+// Approach that works on iOS Safari:
+// - Fetch the preview URL in background (no play() involved)
+// - When URL is ready AND user taps, play() immediately
+// - Use a single persistent Audio element
 
 const ael = new Audio();
-ael.volume = 0.8;
+ael.preload = 'auto';
 
-// Silent WAV to keep audio session alive on iOS
-const SILENCE = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-
-// Preview cache: idx -> url string | 'none' | undefined
+// Cache: songIdx -> previewUrl | 'none' | 'pending'
 const previewCache = {};
+let currentSongIdx = -1;
 
-// Unlock audio on first user interaction (iOS)
-let audioUnlocked = false;
-function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  ael.src = SILENCE;
-  ael.play().then(function() {
-    ael.pause();
-    ael.src = '';
-  }).catch(function() {});
+// iOS: unlock audio on first touch by resuming a silent AudioContext
+let audioCtx = null;
+function unlockiOS() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // Also try playing a silent buffer
+    var buf = audioCtx.createBuffer(1, 1, 22050);
+    var src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+  } catch(e) {}
+  // Also unlock the Audio element itself
+  ael.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+  ael.volume = 0;
+  var p = ael.play();
+  if (p) p.then(function(){ ael.pause(); ael.src=''; ael.volume=0.8; }).catch(function(){});
 }
-document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
-document.addEventListener('click',      unlockAudio, { once: true });
+document.addEventListener('touchstart', unlockiOS, { once:true, passive:true });
+document.addEventListener('click',      unlockiOS, { once:true });
 
-// Audio event listeners
+// Audio UI listeners
 ael.addEventListener('timeupdate', function() {
   if (!ael.duration) return;
-  var pct = (ael.currentTime / ael.duration * 100).toFixed(1);
+  var pct = ael.currentTime / ael.duration * 100;
   var pf = document.getElementById('prog-fill');
   var tc = document.getElementById('t-cur');
   var tt = document.getElementById('t-tot');
@@ -447,35 +454,53 @@ ael.addEventListener('ended',   function() {
   var pf = document.getElementById('prog-fill');
   if (pf) pf.style.width = '100%';
 });
-ael.addEventListener('error', function() { setDot('error', 'Error de audio'); });
+ael.addEventListener('error', function(e) {
+  console.warn('Audio error', e);
+  setDot('error', 'Error de audio');
+});
+ael.addEventListener('stalled', function() { setDot('loading', 'Cargando…'); });
+ael.addEventListener('waiting', function() { setDot('loading', 'Cargando…'); });
+ael.addEventListener('canplay', function() {
+  if (ael.paused && currentSongIdx >= 0) {
+    var volEl = document.getElementById('vol-sl');
+    ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
+    ael.play().catch(function(e) {
+      console.warn('play() failed on canplay:', e);
+      setDot('', '▶ Pulsa Reanudar');
+    });
+  }
+});
 
-// Background pre-fetch: just store the URL, don't play
+// Fetch preview URL silently in background
 function fetchPreviewUrl(songIdx) {
   if (previewCache[songIdx] !== undefined) return;
-  previewCache[songIdx] = 'loading';
+  previewCache[songIdx] = 'pending';
   var s = SONGS[songIdx];
   if (!s) { previewCache[songIdx] = 'none'; return; }
-  iTunesSearch(s.t + ' ' + s.a, function(url) {
-    if (url) { previewCache[songIdx] = url; return; }
-    iTunesSearch(s.t, function(url2) {
-      previewCache[songIdx] = url2 || 'none';
-    });
+  searchItunes(s.t + ' ' + s.a, function(url) {
+    if (url) { previewCache[songIdx] = url; }
+    else {
+      searchItunes(s.t, function(url2) {
+        previewCache[songIdx] = url2 || 'none';
+      });
+    }
   });
 }
 
-// iTunes search helper
-function iTunesSearch(term, cb) {
-  var q = encodeURIComponent(term);
-  fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=10')
+function searchItunes(term, cb) {
+  fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(term) + '&media=music&entity=song&limit=10')
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      var tr = (d.results || []).find(function(x) { return x.previewUrl; });
+      var tr = (d.results||[]).find(function(x){ return x.previewUrl; });
       cb(tr ? tr.previewUrl : null);
     })
     .catch(function() { cb(null); });
 }
 
 function loadAndPlay(song, songIdx) {
+  ael.pause();
+  currentSongIdx = songIdx;
+
   var box = document.getElementById('audio-box');
   var pf  = document.getElementById('prog-fill');
   var tc  = document.getElementById('t-cur');
@@ -483,74 +508,48 @@ function loadAndPlay(song, songIdx) {
   if (pf)  pf.style.width = '0%';
   if (tc)  tc.textContent = '0:00';
   var volEl = document.getElementById('vol-sl');
-  if (volEl) ael.volume = parseFloat(volEl.value);
+  ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
 
   var cached = previewCache[songIdx];
 
-  if (cached && cached !== 'loading' && cached !== 'none') {
-    // URL ready — set src and play() synchronously
-    swapAndPlay(cached);
-
+  if (cached && cached !== 'pending' && cached !== 'none') {
+    // URL ready — load and play
+    setDot('loading', 'Cargando…');
+    ael.src = cached;
+    // canplay listener will call play()
+    ael.load();
   } else if (cached === 'none') {
     setDot('error', 'Sin preview para esta canción');
-
   } else {
-    // Not cached yet — play silence first to keep iOS audio session,
-    // then fetch URL and swap src
-    setDot('loading', 'Buscando preview…');
-
-    // Play silence immediately (keeps iOS audio unlock active)
-    ael.src = SILENCE;
-    ael.play().catch(function() {});
-
-    iTunesSearch(song.t + ' ' + song.a, function(url) {
+    // Fetch now, then load
+    setDot('loading', 'Buscando…');
+    searchItunes(song.t + ' ' + song.a, function(url) {
       if (!url) {
-        iTunesSearch(song.t, function(url2) {
-          if (url2) {
+        searchItunes(song.t, function(url2) {
+          if (url2 && currentSongIdx === songIdx) {
             previewCache[songIdx] = url2;
-            swapAndPlay(url2);
+            setDot('loading', 'Cargando…');
+            ael.src = url2;
+            ael.load();
           } else {
             previewCache[songIdx] = 'none';
-            ael.pause();
-            ael.src = '';
-            setDot('error', 'Sin preview para esta canción');
+            if (currentSongIdx === songIdx) setDot('error', 'Sin preview para esta canción');
           }
         });
         return;
       }
       previewCache[songIdx] = url;
-      swapAndPlay(url);
+      if (currentSongIdx === songIdx) {
+        setDot('loading', 'Cargando…');
+        ael.src = url;
+        ael.load();
+      }
     });
   }
 }
 
-// Swap audio src while keeping iOS session alive
-function swapAndPlay(url) {
-  setDot('loading', 'Cargando…');
-  // Remove old listeners to avoid duplicates
-  ael.oncanplay = null;
-  ael.src = url;
-  // On iOS: after changing src, wait for canplay before calling play()
-  var played = false;
-  ael.oncanplay = function() {
-    if (played) return;
-    played = true;
-    ael.oncanplay = null;
-    ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
-  };
-  // Fallback: try play() directly in case canplay already fired
-  setTimeout(function() {
-    if (!played) {
-      played = true;
-      ael.oncanplay = null;
-      ael.play().catch(function() { setDot('', '▶ Pulsa Reanudar'); });
-    }
-  }, 1500);
-  ael.load();
-}
-
-function playUrl(url) { swapAndPlay(url); }
 function prefetchPreview(idx) { fetchPreviewUrl(idx); }
+function playUrl(url) { ael.src = url; ael.load(); }
 
 
 function seekAudio(e) {
