@@ -56,8 +56,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .player-card{background:var(--sur);border:1px solid rgba(45,212,191,.2);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .pc-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--teal);text-align:center}
 /* Force square QR box */
-.qr-box{background:#fff;border-radius:10px;padding:10px;line-height:0}
-.qr-box canvas,.qr-box img{display:block!important;width:220px!important;height:220px!important}
+.qr-box{background:#fff;border-radius:12px;padding:10px;line-height:0;width:240px;height:240px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qr-box canvas,.qr-box img{display:block!important;width:220px!important;height:220px!important;flex-shrink:0}
 .qr-hint{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-align:center}
 .btn-start{padding:16px 48px;background:linear-gradient(135deg,var(--pink),var(--purple));border:none;border-radius:12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;cursor:pointer;box-shadow:0 8px 30px rgba(232,64,122,.4)}
 
@@ -169,11 +169,24 @@ input[type=range].vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;h
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
 @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
 </style>
+<script>
+// Run immediately — if QR link, replace page before DOM renders
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  var name=params.get('p');
+  var era=params.get('e');
+  var sIds=params.get('s');
+  if(!name||!era||!sIds)return;
+  // Will be handled by QR reader script at bottom after CATALOGS load
+  // Hide home screen to avoid flash
+  document.documentElement.style.background='#0d0d14';
+})();
+</script>
 </head>
 <body>
 
 <!-- HOME -->
-<div id="screen-home" class="screen active">
+<div id="screen-home" class="screen">
   <div class="logo">Bingo<br>Musical</div>
   <div class="logo-sub">Elige tu época favorita</div>
   <div class="era-grid">
@@ -371,6 +384,15 @@ Object.keys(CATALOGS).forEach(k=>{
   }
 });
 
+// Show home screen only if not a QR card link
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  if(!params.get('p')){
+    var h=document.getElementById('screen-home');
+    if(h) h.classList.add('active');
+  }
+})();
+
 const ERA_LABELS={'70s':'🕺 70s·80s·90s','2000s':'💿 Años 2000','actual':'🔥 Actuales','española':'🇪🇸 Españolas','italiana':'🇮🇹 Italianas','mixta':'🎲 Mixta'};
 
 // ── STATE ──
@@ -505,6 +527,7 @@ function renderCards(){
       new QRCode(document.getElementById('qr-'+pi),{
         text:url,
         width:220,height:220,
+        // force square
         colorDark:'#000000',colorLight:'#ffffff',
         correctLevel:QRCode.CorrectLevel.M
       });
@@ -595,10 +618,13 @@ function addToHistory(s,num){
   // Add new item at top
   const item=document.createElement('div');
   item.className='hist-item';
-  item.innerHTML='<span class="hist-num">#'+num+'</span>'
-    +'<span class="hist-info"><div class="hist-title">'+s.t+'</div><div class="hist-artist">'+s.a+'</div></span>'
-    +'<span class="hist-year">'+s.y+'</span>';
-  hl.insertBefore(item,hl.firstChild);
+  item.innerHTML=
+    '<div class="hist-num">#'+num+'</div>'
+    +'<div class="hist-info">'
+    +  '<div class="hist-title">'+s.t+'</div>'
+    +  '<div class="hist-artist">'+s.a+' · '+s.y+'</div>'
+    +'</div>';
+hl.insertBefore(item,hl.firstChild);
 }
 
 function nextSong(){
@@ -614,7 +640,7 @@ function nextSong(){
   loadAndPlay(s);
   const bc=document.getElementById('bc-'+idx);
   if(bc){bc.classList.add('called');bc.scrollIntoView({behavior:'smooth',block:'nearest'});}
-  addToHistory(s,calledIndex);
+  addToHistory(s,idx+1);  // idx+1 = numero del tablero
   updateStats();
 }
 
@@ -671,6 +697,7 @@ let _tt;
 function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('show'),2800);}
 
 // ── QR READER: detect ?p= param and show card directly ──
+// This replaces the ENTIRE page with the card — no home screen shown
 (function(){
   const params=new URLSearchParams(window.location.search);
   const name=params.get('p');
