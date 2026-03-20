@@ -458,26 +458,8 @@ function setDot(st, tx) {
   if (at) at.textContent = tx;
 }
 
-// Preview URL cache: songIndex -> url (pre-fetched in background)
-const previewCache = {};
-
-// Fetch preview URL in background and store in cache
-async function prefetchPreview(songIdx) {
-  if (previewCache[songIdx] !== undefined) return; // already fetched
-  previewCache[songIdx] = null; // mark as in-progress
-  try {
-    const s = SONGS[songIdx];
-    if (!s) return;
-    const q = encodeURIComponent(s.t + ' ' + s.a);
-    const r = await fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=5');
-    const d = await r.json();
-    const tr = (d.results || []).find(x => x.previewUrl);
-    previewCache[songIdx] = tr ? tr.previewUrl : '';
-  } catch(e) {
-    previewCache[songIdx] = '';
-  }
-}
-
+// Simple, robust audio loader — works on iOS and desktop
+// Strategy: always fetch fresh, no complex caching logic
 function loadAndPlay(song, songIdx) {
   ael.pause();
   ael.src = '';
@@ -492,34 +474,45 @@ function loadAndPlay(song, songIdx) {
   const volEl = document.getElementById('vol-sl');
   ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
 
-  const cached = previewCache[songIdx];
+  setDot('loading', 'Buscando preview…');
 
-  if (cached) {
-    // URL already in cache — play immediately (sync with user gesture = iOS happy)
-    setDot('loading', 'Cargando audio…');
-    ael.src = cached;
-    ael.play().catch(() => setDot('error', 'Sin preview disponible'));
-  } else if (cached === '') {
-    // Fetched but no preview found
-    setDot('error', 'Sin preview disponible');
-  } else {
-    // Not cached yet — fetch now and play when ready
-    setDot('loading', 'Buscando en iTunes…');
-    // On iOS this fetch-then-play won't be blocked because the audio element
-    // was already "unlocked" by iosUnlock() on first touch
-    fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(song.t + ' ' + song.a) + '&media=music&entity=song&limit=5')
-      .then(r => r.json())
-      .then(d => {
-        const tr = (d.results || []).find(x => x.previewUrl);
-        if (!tr) { previewCache[songIdx] = ''; setDot('error', 'Sin preview disponible'); return; }
-        previewCache[songIdx] = tr.previewUrl;
-        setDot('loading', 'Cargando audio…');
-        ael.src = tr.previewUrl;
-        ael.play().catch(() => setDot('error', 'Sin preview disponible'));
-      })
-      .catch(() => setDot('error', 'Error de red'));
+  const q = encodeURIComponent(song.t + ' ' + song.a);
+  fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=8&country=ES')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var results = d.results || [];
+      var tr = results.find(function(x) { return x.previewUrl; });
+      if (!tr) {
+        // Try with just title if artist+title fails
+        return fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(song.t) + '&media=music&entity=song&limit=8&country=ES')
+          .then(function(r2) { return r2.json(); })
+          .then(function(d2) {
+            var tr2 = (d2.results || []).find(function(x) { return x.previewUrl; });
+            if (!tr2) { setDot('error', 'Sin preview disponible'); return; }
+            playUrl(tr2.previewUrl);
+          });
+      }
+      playUrl(tr.previewUrl);
+    })
+    .catch(function() {
+      setDot('error', 'Sin conexión a iTunes');
+    });
+}
+
+function playUrl(url) {
+  setDot('loading', 'Cargando…');
+  ael.src = url;
+  var p = ael.play();
+  if (p !== undefined) {
+    p.catch(function() {
+      // iOS: if autoplay blocked, show the audio controls so user can tap play
+      setDot('', 'Toca ▶ para escuchar');
+    });
   }
 }
+
+// Dummy prefetch (kept for compatibility with nextSong calls)
+function prefetchPreview(idx) {}
 
 function seekAudio(e) {
   if (!ael.duration) return;
