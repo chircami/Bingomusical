@@ -458,8 +458,27 @@ function setDot(st, tx) {
   if (at) at.textContent = tx;
 }
 
-async function loadAndPlay(song) {
-  // Stop current
+// Preview URL cache: songIndex -> url (pre-fetched in background)
+const previewCache = {};
+
+// Fetch preview URL in background and store in cache
+async function prefetchPreview(songIdx) {
+  if (previewCache[songIdx] !== undefined) return; // already fetched
+  previewCache[songIdx] = null; // mark as in-progress
+  try {
+    const s = SONGS[songIdx];
+    if (!s) return;
+    const q = encodeURIComponent(s.t + ' ' + s.a);
+    const r = await fetch('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=5');
+    const d = await r.json();
+    const tr = (d.results || []).find(x => x.previewUrl);
+    previewCache[songIdx] = tr ? tr.previewUrl : '';
+  } catch(e) {
+    previewCache[songIdx] = '';
+  }
+}
+
+function loadAndPlay(song, songIdx) {
   ael.pause();
   ael.src = '';
 
@@ -469,38 +488,36 @@ async function loadAndPlay(song) {
   if (box) box.style.display = 'block';
   if (pf)  pf.style.width = '0%';
   if (tc)  tc.textContent = '0:00';
-  setDot('loading', 'Buscando en iTunes…');
 
-  try {
-    const q   = encodeURIComponent(song.t + ' ' + song.a);
-    const url = 'https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=5';
-    const r   = await fetch(url);
-    const d   = await r.json();
-    const tr  = (d.results || []).find(x => x.previewUrl);
+  const volEl = document.getElementById('vol-sl');
+  ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
 
-    if (!tr) {
-      setDot('error', 'Sin preview disponible');
-      return;
-    }
+  const cached = previewCache[songIdx];
 
+  if (cached) {
+    // URL already in cache — play immediately (sync with user gesture = iOS happy)
     setDot('loading', 'Cargando audio…');
-    ael.src    = tr.previewUrl;
-    const volEl = document.getElementById('vol-sl');
-    ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
-
-    // play() must be called — iOS allows it because we are in the
-    // synchronous call chain of the user gesture (button click → nextSong → loadAndPlay)
-    const promise = ael.play();
-    if (promise !== undefined) {
-      promise.catch(err => {
-        console.warn('Audio play failed:', err);
-        // Show a manual play button hint on iOS
-        setDot('error', 'Toca ▶ Pausar/Reanudar para escuchar');
-      });
-    }
-  } catch (e) {
-    console.error('iTunes fetch error:', e);
-    setDot('error', 'Error al buscar la canción');
+    ael.src = cached;
+    ael.play().catch(() => setDot('error', 'Sin preview disponible'));
+  } else if (cached === '') {
+    // Fetched but no preview found
+    setDot('error', 'Sin preview disponible');
+  } else {
+    // Not cached yet — fetch now and play when ready
+    setDot('loading', 'Buscando en iTunes…');
+    // On iOS this fetch-then-play won't be blocked because the audio element
+    // was already "unlocked" by iosUnlock() on first touch
+    fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(song.t + ' ' + song.a) + '&media=music&entity=song&limit=5')
+      .then(r => r.json())
+      .then(d => {
+        const tr = (d.results || []).find(x => x.previewUrl);
+        if (!tr) { previewCache[songIdx] = ''; setDot('error', 'Sin preview disponible'); return; }
+        previewCache[songIdx] = tr.previewUrl;
+        setDot('loading', 'Cargando audio…');
+        ael.src = tr.previewUrl;
+        ael.play().catch(() => setDot('error', 'Sin preview disponible'));
+      })
+      .catch(() => setDot('error', 'Error de red'));
   }
 }
 
@@ -669,6 +686,11 @@ function startGame(){
   document.getElementById('paused-ind').style.display='none';
   document.getElementById('board-ttl').textContent='📋 Casillero — '+SONGS.length+' canciones';
   document.getElementById('stat-pl').textContent=playerCards.length;
+  // Pre-fetch first 2 songs so they're ready instantly
+  setTimeout(() => {
+    if (shuffledSongs[0] !== undefined) prefetchPreview(shuffledSongs[0]);
+    if (shuffledSongs[1] !== undefined) prefetchPreview(shuffledSongs[1]);
+  }, 800);
   showScreen('screen-game');
 }
 
@@ -709,7 +731,12 @@ function nextSong(){
   document.getElementById('np-title').textContent=s.t;
   document.getElementById('np-artist').textContent=s.a;
   document.getElementById('np-year').textContent=s.y;
-  loadAndPlay(s);
+  loadAndPlay(s, idx);
+  // Prefetch next song in background so it's ready when user taps again
+  if (calledIndex < SONGS.length) {
+    const nextIdx = shuffledSongs[calledIndex];
+    setTimeout(() => prefetchPreview(nextIdx), 500);
+  }
   const bc=document.getElementById('bc-'+idx);
   if(bc){bc.classList.add('called');bc.scrollIntoView({behavior:'smooth',block:'nearest'});}
   addToHistory(s,idx+1);  // idx+1 = numero del tablero
