@@ -401,64 +401,136 @@ let SONGS=[],selectedEra='',players=[],playerCards=[],shuffledSongs=[];
 let calledIndex=0,calledSet=new Set(),isPaused=false,isMuted=false,lastVol=0.8;
 const calledHistory=[];
 
-// ── AUDIO — iOS compatible ──
-let audioCtx=null;
-const ael=new Audio();
-// iOS requires user interaction before audio — we unlock on first touch
-let audioUnlocked=false;
-function unlockAudio(){
-  if(audioUnlocked)return;
-  audioUnlocked=true;
-  // Play silent buffer to unlock iOS
-  ael.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-  ael.play().then(()=>{ ael.pause(); ael.src=''; }).catch(()=>{});
+// ── AUDIO — iOS + Desktop compatible ──
+// Key insight for iOS Safari:
+// 1. Audio element must be created and .play() called inside a user gesture handler
+// 2. We pre-create the element but call play() only from button click chain
+// 3. We use a persistent Audio element and just change src each time
+
+const ael = new Audio();
+ael.preload = 'none';
+
+// iOS unlock: create a silent buffer on first touch/click
+let iosUnlocked = false;
+function iosUnlock() {
+  if (iosUnlocked) return;
+  iosUnlocked = true;
+  // Attempt to play silence to unlock audio context on iOS
+  const silence = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU2LjM2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU2LjQxAAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV';
+  const tmp = new Audio(silence);
+  tmp.volume = 0;
+  tmp.play().catch(() => {});
 }
-document.addEventListener('touchstart',unlockAudio,{once:true});
-document.addEventListener('click',unlockAudio,{once:true});
+document.addEventListener('touchstart', iosUnlock, { once: true, passive: true });
+document.addEventListener('click', iosUnlock, { once: true });
 
-ael.addEventListener('timeupdate',()=>{
-  if(!ael.duration)return;
-  document.getElementById('prog-fill').style.width=(ael.currentTime/ael.duration*100)+'%';
-  document.getElementById('t-cur').textContent=fmt(ael.currentTime);
-  document.getElementById('t-tot').textContent=fmt(ael.duration);
+// Audio event listeners
+ael.addEventListener('timeupdate', () => {
+  if (!ael.duration) return;
+  const pct = (ael.currentTime / ael.duration * 100);
+  const pf = document.getElementById('prog-fill');
+  if (pf) pf.style.width = pct + '%';
+  const tc = document.getElementById('t-cur');
+  const tt = document.getElementById('t-tot');
+  if (tc) tc.textContent = fmt(ael.currentTime);
+  if (tt) tt.textContent = fmt(ael.duration);
 });
-ael.addEventListener('playing',()=>setDot('playing','🎵 Reproduciendo preview'));
-ael.addEventListener('pause',()=>setDot('','Pausado'));
-ael.addEventListener('ended',()=>{setDot('','Preview terminada ✓');document.getElementById('prog-fill').style.width='100%';});
-ael.addEventListener('error',()=>setDot('error','Sin preview para esta canción'));
+ael.addEventListener('playing', () => setDot('playing', '🎵 Reproduciendo'));
+ael.addEventListener('pause',   () => setDot('', 'Pausado'));
+ael.addEventListener('ended',   () => {
+  setDot('', 'Preview terminada ✓');
+  const pf = document.getElementById('prog-fill');
+  if (pf) pf.style.width = '100%';
+});
+ael.addEventListener('error', () => setDot('error', 'Sin preview para esta canción'));
+ael.addEventListener('stalled', () => setDot('loading', 'Cargando…'));
 
-function fmt(s){if(!s||isNaN(s))return'0:00';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
-function setDot(st,tx){const d=document.getElementById('a-dot');if(!d)return;d.className='a-dot'+(st?' '+st:'');document.getElementById('a-txt').textContent=tx;}
+let isMuted = false, lastVol = 0.8;
 
-async function loadAndPlay(song){
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+}
+function setDot(st, tx) {
+  const d = document.getElementById('a-dot');
+  if (!d) return;
+  d.className = 'a-dot' + (st ? ' ' + st : '');
+  const at = document.getElementById('a-txt');
+  if (at) at.textContent = tx;
+}
+
+async function loadAndPlay(song) {
+  // Stop current
   ael.pause();
-  document.getElementById('audio-box').style.display='block';
-  document.getElementById('prog-fill').style.width='0%';
-  document.getElementById('t-cur').textContent='0:00';
-  setDot('loading','Buscando en iTunes…');
-  try{
-    const r=await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(song.t+' '+song.a)+'&media=music&entity=song&limit=5');
-    const d=await r.json();
-    const tr=d.results?.find(x=>x.previewUrl);
-    if(tr){
-      ael.src=tr.previewUrl;
-      ael.volume=parseFloat(document.getElementById('vol-sl').value);
-      // iOS: must call play() directly from user gesture chain
-      const p=ael.play();
-      if(p!==undefined) p.catch(()=>setDot('error','Toca ▶ para reproducir'));
-    } else {
-      setDot('error','Sin preview disponible');
+  ael.src = '';
+
+  const box = document.getElementById('audio-box');
+  const pf  = document.getElementById('prog-fill');
+  const tc  = document.getElementById('t-cur');
+  if (box) box.style.display = 'block';
+  if (pf)  pf.style.width = '0%';
+  if (tc)  tc.textContent = '0:00';
+  setDot('loading', 'Buscando en iTunes…');
+
+  try {
+    const q   = encodeURIComponent(song.t + ' ' + song.a);
+    const url = 'https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=5';
+    const r   = await fetch(url);
+    const d   = await r.json();
+    const tr  = (d.results || []).find(x => x.previewUrl);
+
+    if (!tr) {
+      setDot('error', 'Sin preview disponible');
+      return;
     }
-  }catch(e){
-    setDot('error','Error con iTunes');
+
+    setDot('loading', 'Cargando audio…');
+    ael.src    = tr.previewUrl;
+    const volEl = document.getElementById('vol-sl');
+    ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
+
+    // play() must be called — iOS allows it because we are in the
+    // synchronous call chain of the user gesture (button click → nextSong → loadAndPlay)
+    const promise = ael.play();
+    if (promise !== undefined) {
+      promise.catch(err => {
+        console.warn('Audio play failed:', err);
+        // Show a manual play button hint on iOS
+        setDot('error', 'Toca ▶ Pausar/Reanudar para escuchar');
+      });
+    }
+  } catch (e) {
+    console.error('iTunes fetch error:', e);
+    setDot('error', 'Error al buscar la canción');
   }
 }
 
-function seekAudio(e){if(!ael.duration)return;ael.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*ael.duration;}
-function setVol(v){ael.volume=parseFloat(v);isMuted=false;document.getElementById('vol-icon').textContent=parseFloat(v)>0?'🔊':'🔇';}
-function toggleMute(){
-  if(isMuted){ael.volume=lastVol;document.getElementById('vol-sl').value=lastVol;document.getElementById('vol-icon').textContent='🔊';isMuted=false;}
-  else{lastVol=ael.volume;ael.volume=0;document.getElementById('vol-sl').value=0;document.getElementById('vol-icon').textContent='🔇';isMuted=true;}
+function seekAudio(e) {
+  if (!ael.duration) return;
+  const bar = e.currentTarget;
+  ael.currentTime = (e.offsetX / bar.offsetWidth) * ael.duration;
+}
+function setVol(v) {
+  ael.volume = parseFloat(v);
+  isMuted = false;
+  const vi = document.getElementById('vol-icon');
+  if (vi) vi.textContent = parseFloat(v) > 0 ? '🔊' : '🔇';
+}
+function toggleMute() {
+  const vi = document.getElementById('vol-icon');
+  const vs = document.getElementById('vol-sl');
+  if (isMuted) {
+    ael.volume = lastVol;
+    if (vs) vs.value = lastVol;
+    if (vi) vi.textContent = '🔊';
+    isMuted = false;
+  } else {
+    lastVol = ael.volume;
+    ael.volume = 0;
+    if (vs) vs.value = '0';
+    if (vi) vi.textContent = '🔇';
+    isMuted = true;
+  }
 }
 
 // ── SCREENS ──
