@@ -402,37 +402,22 @@ let calledIndex=0,calledSet=new Set(),isPaused=false,isMuted=false,lastVol=0.8;
 const calledHistory=[];
 
 // ── AUDIO ENGINE ──
+// iOS Safari: play() must be synchronous with user gesture.
+// We pre-fetch ALL preview URLs before the game starts.
+// When user taps Play Song, URL is already in cache → play() is sync → iOS OK.
+
 const ael = new Audio();
 ael.preload = 'none';
-const previewCache = {};
+const previewCache = {}; // songIdx -> url | 'none'
 let currentSongIdx = -1;
-let audioReady = false;
 
-// SILENCE data uri — 1 second of silence
-const SIL = 'data:audio/mpeg;base64,SUQzBAAAAAAA';
+// Unlock on first touch
+document.addEventListener('touchstart', function() {
+  ael.muted = true;
+  ael.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+  ael.play().then(function(){ ael.pause(); ael.muted = false; ael.src = ''; }).catch(function(){});
+}, { once: true, passive: true });
 
-// On first user touch: play silence to fully unlock iOS audio
-function unlockAudio() {
-  if (audioReady) return;
-  ael.src = SIL;
-  ael.volume = 0;
-  var p = ael.play();
-  if (p) p.then(function() {
-    ael.pause();
-    ael.volume = 0.8;
-    ael.src = '';
-    audioReady = true;
-    console.log('Audio unlocked');
-  }).catch(function(e) {
-    console.warn('Unlock failed:', e);
-  });
-}
-// Attach to multiple events to maximize unlock chance
-['touchstart','touchend','click','keydown'].forEach(function(ev) {
-  document.addEventListener(ev, unlockAudio, { once: false, passive: true });
-});
-
-// UI listeners
 ael.addEventListener('timeupdate', function() {
   if (!ael.duration) return;
   var pf=document.getElementById('prog-fill');
@@ -442,105 +427,100 @@ ael.addEventListener('timeupdate', function() {
   if(tc) tc.textContent=fmt(ael.currentTime);
   if(tt) tt.textContent=fmt(ael.duration);
 });
-ael.addEventListener('playing',function(){setDot('playing','🎵 Reproduciendo');});
-ael.addEventListener('pause',function(){if(!ael.ended)setDot('','Pausado');});
-ael.addEventListener('ended',function(){
+ael.addEventListener('playing', function(){ setDot('playing','🎵 Reproduciendo'); });
+ael.addEventListener('pause',   function(){ if(!ael.ended) setDot('','Pausado'); });
+ael.addEventListener('ended',   function(){
   setDot('','Preview terminada ✓');
   var pf=document.getElementById('prog-fill');
-  if(pf)pf.style.width='100%';
+  if(pf) pf.style.width='100%';
 });
-ael.addEventListener('error',function(){setDot('error','Sin preview para esta canción');});
+ael.addEventListener('error', function(){ setDot('error','Sin preview para esta canción'); });
+
+// Fetch one preview URL and store in cache
+// iOS: iTunes direct fetch fails — use allorigins.win proxy
+function itunesFetch(term, cb) {
+  var base = 'https://itunes.apple.com/search?term='+encodeURIComponent(term)+'&media=music&entity=song&limit=10';
+  var url  = 'https://api.allorigins.win/raw?url='+encodeURIComponent(base);
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var tr=(d.results||[]).find(function(x){ return x.previewUrl; });
+      cb(tr ? tr.previewUrl : null);
+    })
+    .catch(function(){ cb(null); });
+}
+
+function fetchOne(songIdx, cb) {
+  if (previewCache[songIdx] !== undefined) { if(cb) cb(); return; }
+  previewCache[songIdx] = 'pending';
+  var s = SONGS[songIdx];
+  if (!s) { previewCache[songIdx] = 'none'; if(cb) cb(); return; }
+  itunesFetch(s.t+' '+s.a, function(url) {
+    if (url) { previewCache[songIdx]=url; if(cb)cb(); return; }
+    itunesFetch(s.t, function(url2) {
+      previewCache[songIdx] = url2 || 'none';
+      if(cb) cb();
+    });
+  });
+}
+
+// Pre-fetch ALL songs in the shuffled order, rate-limited
+function prefetchAll(indices) {
+  var i = 0;
+  function next() {
+    if (i >= indices.length) return;
+    fetchOne(indices[i++], function() {
+      setTimeout(next, 100); // 100ms between requests to avoid rate limiting
+    });
+  }
+  next();
+}
+
+function fetchPreviewUrl(idx) { fetchOne(idx, null); }
+function prefetchPreview(idx) { fetchOne(idx, null); }
 
 function loadAndPlay(song, songIdx) {
   currentSongIdx = songIdx;
   var box=document.getElementById('audio-box');
   var pf=document.getElementById('prog-fill');
   var tc=document.getElementById('t-cur');
-  if(box)box.style.display='block';
-  if(pf)pf.style.width='0%';
-  if(tc)tc.textContent='0:00';
-
-  var cached = previewCache[songIdx];
-  if (cached && cached !== 'pending' && cached !== 'none') {
-    _doPlay(cached, songIdx);
-    return;
-  }
-  if (cached === 'none') {
-    setDot('error','Sin preview para esta canción');
-    return;
-  }
-  setDot('loading','Buscando…');
-  _fetchAndPlay(song, songIdx);
-}
-
-function _fetchAndPlay(song, songIdx) {
-  var terms = [song.t + ' ' + song.a, song.t];
-  var ti = 0;
-  function next() {
-    if (ti >= terms.length) {
-      previewCache[songIdx] = 'none';
-      if (currentSongIdx === songIdx) setDot('error','Sin preview para esta canción');
-      return;
-    }
-    var q = encodeURIComponent(terms[ti++]);
-    fetch('https://itunes.apple.com/search?term='+q+'&media=music&entity=song&limit=10')
-      .then(function(r){return r.json();})
-      .then(function(d){
-        var tr=(d.results||[]).find(function(x){return x.previewUrl;});
-        if(!tr){next();return;}
-        previewCache[songIdx]=tr.previewUrl;
-        if(currentSongIdx===songIdx) _doPlay(tr.previewUrl, songIdx);
-      })
-      .catch(function(){next();});
-  }
-  next();
-}
-
-function _doPlay(url, songIdx) {
-  if (currentSongIdx !== songIdx) return;
-  setDot('loading','Cargando…');
+  if(box) box.style.display='block';
+  if(pf)  pf.style.width='0%';
+  if(tc)  tc.textContent='0:00';
   var volEl=document.getElementById('vol-sl');
   ael.volume = volEl ? parseFloat(volEl.value) : 0.8;
-  ael.src = url;
-  var promise = ael.play();
-  if (promise) {
-    promise.then(function(){
-      setDot('playing','🎵 Reproduciendo');
-    }).catch(function(e) {
-      console.warn('play() blocked:', e.name, e.message);
-      // On iOS: if blocked, show manual play button
-      setDot('','▶ Pulsa Play Song de nuevo');
-    });
+
+  var cached = previewCache[songIdx];
+
+  if (cached && cached !== 'pending' && cached !== 'none') {
+    // URL ready — synchronous play (iOS happy)
+    setDot('playing','🎵 Reproduciendo');
+    ael.src = cached;
+    ael.play().catch(function(){ setDot('error','Sin preview para esta canción'); });
+  } else if (cached === 'none') {
+    setDot('error','Sin preview para esta canción');
+  } else {
+    // Still fetching — wait and retry
+    setDot('loading','Cargando…');
+    var tries = 0;
+    var interval = setInterval(function() {
+      var c = previewCache[songIdx];
+      if (currentSongIdx !== songIdx) { clearInterval(interval); return; }
+      if (c && c !== 'pending' && c !== 'none') {
+        clearInterval(interval);
+        setDot('playing','🎵 Reproduciendo');
+        ael.src = c;
+        ael.play().catch(function(){ setDot('error','Sin preview para esta canción'); });
+      } else if (c === 'none') {
+        clearInterval(interval);
+        setDot('error','Sin preview para esta canción');
+      } else if (++tries > 50) { // 5 seconds max
+        clearInterval(interval);
+        setDot('error','Sin preview para esta canción');
+      }
+    }, 100);
   }
 }
-
-// Background prefetch
-function fetchPreviewUrl(songIdx) {
-  if (previewCache[songIdx] !== undefined) return;
-  previewCache[songIdx] = 'pending';
-  var s=SONGS[songIdx];
-  if(!s){previewCache[songIdx]='none';return;}
-  var q=encodeURIComponent(s.t+' '+s.a);
-  fetch('https://itunes.apple.com/search?term='+q+'&media=music&entity=song&limit=10')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      var tr=(d.results||[]).find(function(x){return x.previewUrl;});
-      if(tr){previewCache[songIdx]=tr.previewUrl;}
-      else{
-        var q2=encodeURIComponent(s.t);
-        fetch('https://itunes.apple.com/search?term='+q2+'&media=music&entity=song&limit=10')
-          .then(function(r2){return r2.json();})
-          .then(function(d2){
-            var tr2=(d2.results||[]).find(function(x){return x.previewUrl;});
-            previewCache[songIdx]=tr2?tr2.previewUrl:'none';
-          })
-          .catch(function(){previewCache[songIdx]='none';});
-      }
-    })
-    .catch(function(){previewCache[songIdx]='none';});
-}
-
-function prefetchPreview(idx){fetchPreviewUrl(idx);}
 
 
 function seekAudio(e) {
@@ -708,12 +688,8 @@ function startGame(){
   document.getElementById('paused-ind').style.display='none';
   document.getElementById('board-ttl').textContent='📋 Casillero — '+SONGS.length+' canciones';
   document.getElementById('stat-pl').textContent=playerCards.length;
-  // Pre-fetch first 4 songs immediately
-  setTimeout(function() {
-    for (var _si = 0; _si < 4; _si++) {
-      if (shuffledSongs[_si] !== undefined) fetchPreviewUrl(shuffledSongs[_si]);
-    }
-  }, 500);
+  // Pre-fetch ALL songs in background (rate-limited)
+  setTimeout(function() { prefetchAll(shuffledSongs.slice()); }, 300);
   showScreen('screen-game');
 }
 
