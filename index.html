@@ -437,17 +437,42 @@ ael.addEventListener('ended',   function(){
 ael.addEventListener('error', function(){ setDot('error','Sin preview para esta canción'); });
 
 // Fetch one preview URL and store in cache
-// iOS: iTunes direct fetch fails — use allorigins.win proxy
+// iTunes search via JSONP — works on ALL platforms including iOS Safari
+// JSONP injects a <script> tag, bypassing CORS entirely
+var _cbIdx = 0;
 function itunesFetch(term, cb) {
-  var base = 'https://itunes.apple.com/search?term='+encodeURIComponent(term)+'&media=music&entity=song&limit=10';
-  var url  = 'https://api.allorigins.win/raw?url='+encodeURIComponent(base);
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var tr=(d.results||[]).find(function(x){ return x.previewUrl; });
-      cb(tr ? tr.previewUrl : null);
-    })
-    .catch(function(){ cb(null); });
+  var cbName = '_itcb' + (++_cbIdx);
+  var done = false;
+  var timeout = setTimeout(function() {
+    if (done) return;
+    done = true;
+    try { delete window[cbName]; } catch(e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    cb(null);
+  }, 8000);
+
+  window[cbName] = function(d) {
+    if (done) return;
+    done = true;
+    clearTimeout(timeout);
+    try { delete window[cbName]; } catch(e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    var tr = (d.results||[]).find(function(x){ return x.previewUrl; });
+    cb(tr ? tr.previewUrl : null);
+  };
+
+  var script = document.createElement('script');
+  script.src = 'https://itunes.apple.com/search?term='
+    + encodeURIComponent(term)
+    + '&media=music&entity=song&limit=10&callback=' + cbName;
+  script.onerror = function() {
+    if (done) return;
+    done = true;
+    clearTimeout(timeout);
+    try { delete window[cbName]; } catch(e) {}
+    cb(null);
+  };
+  document.head.appendChild(script);
 }
 
 function fetchOne(songIdx, cb) {
@@ -455,8 +480,8 @@ function fetchOne(songIdx, cb) {
   previewCache[songIdx] = 'pending';
   var s = SONGS[songIdx];
   if (!s) { previewCache[songIdx] = 'none'; if(cb) cb(); return; }
-  itunesFetch(s.t+' '+s.a, function(url) {
-    if (url) { previewCache[songIdx]=url; if(cb)cb(); return; }
+  itunesFetch(s.t + ' ' + s.a, function(url) {
+    if (url) { previewCache[songIdx] = url; if(cb) cb(); return; }
     itunesFetch(s.t, function(url2) {
       previewCache[songIdx] = url2 || 'none';
       if(cb) cb();
@@ -464,7 +489,7 @@ function fetchOne(songIdx, cb) {
   });
 }
 
-// Pre-fetch ALL songs in the shuffled order, rate-limited
+
 function prefetchAll(indices) {
   var i = 0;
   function next() {
