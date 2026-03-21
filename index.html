@@ -104,6 +104,10 @@ input[type=range].vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;h
 @media(max-width:700px){.board-grid{grid-template-columns:repeat(6,1fr)}}
 .bcell{background:var(--sur2);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:5px 4px;text-align:center;min-height:54px;display:flex;flex-direction:column;justify-content:center;transition:all .4s}
 .bcell.called{background:linear-gradient(135deg,#1e0a3c,#12082a);border-color:var(--purple);box-shadow:0 0 12px rgba(155,93,229,.25);animation:pop .3s ease}
+.bcell.current{background:linear-gradient(135deg,#0f2e1a,#0a3d1f)!important;border-color:#4ade80!important;box-shadow:0 0 18px rgba(74,222,128,.45)!important;animation:pop .3s ease}
+.bcell.current .bn{color:#4ade80!important}
+.bcell.current .bt{color:#86efac!important}
+.bcell.current .ba{color:#4ade80!important}
 @keyframes pop{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
 .bn{font-family:'Bebas Neue',sans-serif;font-size:12px;color:var(--muted);margin-bottom:1px}
 .bcell.called .bn{color:var(--purple)}
@@ -584,8 +588,11 @@ function nextSong(){
   for(var pi=0;pi<5;pi++){
     if(calledIndex+pi<SONGS.length)(function(si){setTimeout(function(){prefetchOne(si);},100+pi*100);})(shuffledSongs[calledIndex+pi]);
   }
+  // Remove 'current' from previous cell
+  var prevCurrent=document.querySelector('.bcell.current');
+  if(prevCurrent)prevCurrent.classList.remove('current');
   var bc=document.getElementById('bc-'+idx);
-  if(bc){bc.classList.add('called');bc.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  if(bc){bc.classList.add('called');bc.classList.add('current');bc.scrollIntoView({behavior:'smooth',block:'nearest'});}
   addToHistory(s,idx+1);
   updateStats();
 }
