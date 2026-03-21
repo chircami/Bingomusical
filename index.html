@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🎵 Bingo Musical</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -437,42 +438,31 @@ ael.addEventListener('ended',   function(){
 ael.addEventListener('error', function(){ setDot('error','Sin preview para esta canción'); });
 
 // Fetch one preview URL and store in cache
-// iTunes search via JSONP — works on ALL platforms including iOS Safari
-// JSONP injects a <script> tag, bypassing CORS entirely
-var _cbIdx = 0;
+// iTunes search — tries direct fetch first (desktop), then allorigins proxy (iOS)
 function itunesFetch(term, cb) {
-  var cbName = '_itcb' + (++_cbIdx);
-  var done = false;
-  var timeout = setTimeout(function() {
-    if (done) return;
-    done = true;
-    try { delete window[cbName]; } catch(e) {}
-    if (script.parentNode) script.parentNode.removeChild(script);
-    cb(null);
-  }, 8000);
-
-  window[cbName] = function(d) {
-    if (done) return;
-    done = true;
-    clearTimeout(timeout);
-    try { delete window[cbName]; } catch(e) {}
-    if (script.parentNode) script.parentNode.removeChild(script);
-    var tr = (d.results||[]).find(function(x){ return x.previewUrl; });
-    cb(tr ? tr.previewUrl : null);
-  };
-
-  var script = document.createElement('script');
-  script.src = 'https://itunes.apple.com/search?term='
+  var base = 'https://itunes.apple.com/search?term='
     + encodeURIComponent(term)
-    + '&media=music&entity=song&limit=10&callback=' + cbName;
-  script.onerror = function() {
-    if (done) return;
-    done = true;
-    clearTimeout(timeout);
-    try { delete window[cbName]; } catch(e) {}
-    cb(null);
-  };
-  document.head.appendChild(script);
+    + '&media=music&entity=song&limit=10';
+
+  // Try 1: direct (works on desktop)
+  fetch(base)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var tr = (d.results||[]).find(function(x){ return x.previewUrl; });
+      if (tr) { cb(tr.previewUrl); return; }
+      cb(null);
+    })
+    .catch(function() {
+      // Try 2: allorigins proxy (works on iOS Safari)
+      var proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base);
+      fetch(proxy)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var tr = (d.results||[]).find(function(x){ return x.previewUrl; });
+          cb(tr ? tr.previewUrl : null);
+        })
+        .catch(function() { cb(null); });
+    });
 }
 
 function fetchOne(songIdx, cb) {
@@ -526,7 +516,7 @@ function loadAndPlay(song, songIdx) {
     setDot('error','Sin preview para esta canción');
   } else {
     // Still fetching — wait and retry
-    setDot('loading','Cargando…');
+    setDot('loading','Buscando preview…');
     var tries = 0;
     var interval = setInterval(function() {
       var c = previewCache[songIdx];
